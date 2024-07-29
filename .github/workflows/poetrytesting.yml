@@ -14,6 +14,12 @@ jobs:
       with:
         python-version: '3.8'
         cache: 'poetry'
+    - name: Check and Invalidate Cache
+      run: |
+        if [ ! -d ~/.cache/pypoetry/virtualenvs/my-package-TYPcPh3t-py3.8 ]; then
+          echo "Invalid cache. Deleting..."
+          rm -rf ~/.cache/pypoetry/virtualenvs
+        fi
     - run: poetry install
     - name: Check Poetry Python version
       run: poetry env info
