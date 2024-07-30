@@ -15,8 +15,7 @@ jobs:
       with:
         python-version: '3.8'
     
-    - name: Configure Poetry Virtual Environment Path
-      run: poetry config virtualenvs.path ~/.cache/pypoetry/virtualenvs
+  
     
     - name: Install dependencies
       run: poetry install
