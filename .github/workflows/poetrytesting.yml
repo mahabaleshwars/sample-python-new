@@ -1,7 +1,7 @@
 name: testingcache
 
-on: 
- workflow_dispatch:
+on:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -17,16 +17,22 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: 3.12
-        cache: poetry
+        cache: 'poetry'
+
+    - name: Determine Virtual Environment Name
+      id: venv-name
+      run: |
+        poetry env use $(which python)
+        VENV_NAME=$(poetry env info -p | xargs basename)
+        echo "VENV_NAME=$VENV_NAME" >> $GITHUB_ENV
 
     - name: Check and Invalidate Cache if Necessary
       run: |
-        if [ ! -d "$HOME/.cache/pypoetry/virtualenvs/$(poetry env list --full-path | grep -Eo 'testing-cache-.+-py3.12')" ]; then
+        if [ ! -d "$HOME/.cache/pypoetry/virtualenvs/${{ env.VENV_NAME }}" ]; then
           echo "Invalid virtual environment cache. Deleting..."
           rm -rf $HOME/.cache/pypoetry/virtualenvs/
         fi
 
     - name: Install dependencies
       run: poetry install
-
     
