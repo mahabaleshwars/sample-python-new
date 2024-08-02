@@ -1,6 +1,7 @@
 name: testingcache
 
-on: [push]
+on: 
+ workflow_dispatch:
 
 jobs:
   build:
