@@ -19,12 +19,9 @@ jobs:
         python-version: 3.12
         cache: 'poetry'
 
-    - name: Determine Virtual Environment Name
+    - name: Set Hardcoded Virtual Environment Name
       id: venv-name
-      run: |
-        poetry env use $(which python)
-        VENV_NAME=$(poetry env info -p | xargs basename)
-        echo "VENV_NAME=$VENV_NAME" >> $GITHUB_ENV
+      run: echo "VENV_NAME=gowri-durga-TYPcPh3t-py3.12" >> $GITHUB_ENV
 
     - name: Check and Invalidate Cache if Necessary
       run: |
@@ -35,4 +32,3 @@ jobs:
 
     - name: Install dependencies
       run: poetry install
-    
