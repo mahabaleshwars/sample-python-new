@@ -16,12 +16,12 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
-        python-version: 3.9
+        python-version: 3.12
         cache: poetry
 
     - name: Check and Invalidate Cache if Necessary
       run: |
-        if [ ! -d "$HOME/.cache/pypoetry/virtualenvs/$(poetry env list --full-path | grep -Eo 'testing-cache-.+-py3.9')" ]; then
+        if [ ! -d "$HOME/.cache/pypoetry/virtualenvs/$(poetry env list --full-path | grep -Eo 'testing-cache-.+-py3.12')" ]; then
           echo "Invalid virtual environment cache. Deleting..."
           rm -rf $HOME/.cache/pypoetry/virtualenvs/
         fi
