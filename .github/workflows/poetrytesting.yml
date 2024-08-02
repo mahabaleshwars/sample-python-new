@@ -19,16 +19,5 @@ jobs:
         python-version: 3.12
         cache: 'poetry'
 
-    - name: Set Hardcoded Virtual Environment Name
-      id: venv-name
-      run: echo "VENV_NAME=gowri-durga-TYPcPh3t-py3.12" >> $GITHUB_ENV
-
-    - name: Check and Invalidate Cache if Necessary
-      run: |
-        if [ ! -d "$HOME/.cache/pypoetry/virtualenvs/${{ env.VENV_NAME }}" ]; then
-          echo "Invalid virtual environment cache. Deleting..."
-          rm -rf $HOME/.cache/pypoetry/virtualenvs/
-        fi
-
     - name: Install dependencies
-      run: poetry install
+      run: poetry install --no-cache
