@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Java
-        uses: gowridurgad/setup-java-fork@testing-dargonwell
+        uses: actions/setup-java@v5
         with:
           distribution: 'dragonwell'
           java-version: '21'
