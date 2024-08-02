@@ -1,21 +1,24 @@
-name: issue641
+name: Java CI gradle
 
-on: 
-   workflow_dispatch:
+on: [push, pull_request]
 
 jobs:
   build:
-    name: 'Ubuntu (Node 20, Deno 1.40, Java 21)'
-    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        os: [ windows-2019, ubuntu-20.04 ]
+        distribution: [ 'dragonwell' ]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Set up JDK
         uses: actions/setup-java@main
         with:
-          distribution: 'dragonwell'
-          java-version: '21'
-
-     
+          distribution: ${{ matrix.distribution }}
+          java-version: '8'
+          java-package: jdk
+          architecture: x64
