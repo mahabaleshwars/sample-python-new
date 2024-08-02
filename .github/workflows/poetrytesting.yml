@@ -1,23 +1,28 @@
-name: poetryTest1
-on:
-  workflow_dispatch:
+name: testingcache
+
+on: [push]
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Install poetry
-      run: pipx install poetry
-    
+
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.12'
+        python-version: 3.9
         cache: poetry
-    
+
+    - name: Check and Invalidate Cache if Necessary
+      run: |
+        if [ ! -d "$HOME/.cache/pypoetry/virtualenvs/$(poetry env list --full-path | grep -Eo 'testing-cache-.+-py3.9')" ]; then
+          echo "Invalid virtual environment cache. Deleting..."
+          rm -rf $HOME/.cache/pypoetry/virtualenvs/
+        fi
+
     - name: Install dependencies
       run: poetry install
+
     
-    - name: Check Poetry Python version
-      run: poetry env info
