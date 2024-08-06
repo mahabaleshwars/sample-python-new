@@ -1,23 +1,19 @@
-name: testingcache
-
+name: poetryTest1
 on:
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
-
     - name: Install poetry
       run: pipx install poetry
-
-    - name: Setup Python
-      uses: actions/setup-python@v5
+    - name: Check Poetry Python version
+      run: poetry env info
+    - uses: gowridurgad/setup-python@doc-update
       with:
-        python-version: 3.12
+        python-version: '3.8'
         cache: 'poetry'
-
-    - name: Install dependencies
-      run: poetry install --no-cache
+    - run: poetry install
+    - name: Check Poetry Python version
+      run: poetry env info
