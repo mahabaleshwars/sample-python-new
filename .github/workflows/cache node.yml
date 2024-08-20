@@ -9,14 +9,14 @@ jobs:
     strategy:
       matrix:
         os: ['windows-latest']
-        arch: ['x64', 'x84']
+        arch: ['x64', 'x86']
     steps:
       - uses: actions/checkout@v4
       - name: Install poetry
         run: pipx install poetry
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12.5'
           architecture: ${{ matrix.arch }}
           cache: 'poetry'
       - name: Use python
