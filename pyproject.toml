@@ -7,3 +7,4 @@ authors = ["gowridurgad <gowridurga.d@github.com>"]
 [tool.poetry.dependencies]
 python = ">= 3.9"
 requests = "^2.25.1"
+PyGObject = "^3.40.1"
