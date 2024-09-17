@@ -1,0 +1,23 @@
+name: run tests
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+   
+
+    steps:
+      - uses: actions/checkout@v4
+    
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+            python-version: 3.11
+      - name: Install coveralls
+        run: |
+           pip install coveralls
+      - name: Run coveralls without login shell (succeeds)
+        run: |
+          coveralls --version
