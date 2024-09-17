@@ -21,3 +21,8 @@ jobs:
       - name: Run coveralls without login shell (succeeds)
         run: |
           coveralls --version
+
+      - name: Run coveralls with login shell (fails)
+        shell: bash -l {0}
+        run: |
+           coveralls --version
