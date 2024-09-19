@@ -7,15 +7,12 @@ jobs:
   test:
     runs-on: macos-latest
 
-    strategy:
-      matrix:
-        python-version: [3.9, 3.10.5, 3.11]
 
     steps:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.9"
 
     - name: Install coveralls
       run: |
@@ -26,6 +23,6 @@ jobs:
     - name: Run coveralls with login shell
       shell: bash -l {0}
       run: |
-         export PYTHON_VERSION=$(python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-         export PATH="/Users/runner/hostedtoolcache/Python/$PYTHON_VERSION/arm64/bin:/Library/Frameworks/Python.framework/Versions/$PYTHON_VERSION/bin:$PATH"
+        
+         export PATH="/Users/runner/hostedtoolcache/Python/3.9/arm64/bin:/Library/Frameworks/Python.framework/Versions/3.9/bin:$PATH"
          coveralls --version
