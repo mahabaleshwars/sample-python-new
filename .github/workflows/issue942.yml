@@ -1,4 +1,4 @@
-name: Test Workflow
+name: Test Workflow1
 
 on: 
     workflow_dispatch:
@@ -19,8 +19,9 @@ jobs:
 
 
 
-    - name: Run coveralls with login shell (fails)
+    - name: Run coveralls with login shell
       shell: bash -l {0}
       run: |
-        export PATH="/Users/runner/hostedtoolcache/Python/3.9/arm64/bin:/Library/Frameworks/Python.framework/Versions/3.11/bin:$PATH"
-        coveralls --version
+         export PYTHON_VERSION=$(python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+         export PATH="/Users/runner/hostedtoolcache/Python/$PYTHON_VERSION/arm64/bin:/Library/Frameworks/Python.framework/Versions/$PYTHON_VERSION/bin:$PATH"
+         coveralls --version
