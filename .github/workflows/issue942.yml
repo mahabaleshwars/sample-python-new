@@ -23,6 +23,5 @@ jobs:
     - name: Run coveralls with login shell
       shell: bash -l {0}
       run: |
-        
-         export PATH="/Users/runner/hostedtoolcache/Python/3.9/arm64/bin:/Library/Frameworks/Python.framework/Versions/3.9/bin:$PATH"
+         export PATH="/Users/runner/hostedtoolcache/Python/3.9/arm64/bin:/Library/Frameworks/Python.framework/Versions/3.11/bin:$PATH"
          coveralls --version
