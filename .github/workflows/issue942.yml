@@ -1,26 +1,30 @@
-name: run tests
+name: Test Workflow
 
 on: 
-  workflow_dispatch:
+    workflow_dispatch:
 
 jobs:
-  build:
+  test:
     runs-on: macos-latest
-   
+
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
 
     steps:
-      - uses: actions/checkout@v4
-    
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-            python-version: 3.11
-      - name: Install coveralls
-        run: |
-           pip install coveralls
-     
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
 
-      - name: Run coveralls with login shell (fails)
-        shell: bash -l {0}
-        run: |
-           coveralls --version
+    - name: Install coveralls
+      run: |
+        pip install coveralls
+
+
+
+    - name: Run coveralls with login shell (fails)
+      shell: bash -l {0}
+      run: |
+        export PATH="/Users/runner/hostedtoolcache/Python/${{ matrix.python-version }}/arm64/bin:$PATH"
+        coveralls --version
