@@ -24,7 +24,7 @@ jobs:
 
 
     - name: Run coveralls with login shell (fails)
-     shell: bash -l {0}
-     run: |
+      shell: bash -l {0}
+      run: |
         export PATH="/Users/runner/hostedtoolcache/Python/3.9/arm64/bin:/Library/Frameworks/Python.framework/Versions/3.9/bin:$PATH"
         coveralls --version
