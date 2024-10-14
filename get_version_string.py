@@ -1,4 +1,3 @@
+from packaging import version
 
- from packaging import version
- print("Hello world")
-
+print("Hello world")
