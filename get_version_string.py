@@ -1,4 +1,3 @@
-from setuptools import packaging
+from setuptools.extern import packaging
 
-version = packaging.version.Version("1.0")
-print(version)
+print("Hello world")
