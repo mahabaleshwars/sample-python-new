@@ -1,0 +1,24 @@
+name: Presubmit Host Windows
+
+on:
+  workflow_dispatch:
+  
+jobs:
+  build-host-win:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9.13'
+  
+
+    - name: Get version string
+      shell: cmd
+      id: get_version
+      run: |
+        py ./get_version_string.py
