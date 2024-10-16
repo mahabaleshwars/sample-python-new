@@ -11,7 +11,7 @@ jobs:
       matrix:
         python-version:
           - "3.x" # should be universal
-          - "3.10" # should be *not* universal
+          - "3.10.11" # should be *not* universal
           - "pypy-3.10"
           - "graalpy-24"
         archname: [x86_64, aarch64]
