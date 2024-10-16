@@ -1,14 +1,10 @@
 name: crossplatform
 
-
 on:
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   check-cross:
-    # The type of runner that the job will run on
     runs-on: macos-latest
     strategy:
       fail-fast: false
@@ -29,8 +25,12 @@ jobs:
             architecture: arm64
             processor: arm
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - name: Install missing libraries
+        if: matrix.archname == 'x86_64'
+        run: |
+          brew install gettext
+          brew link --force gettext
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
