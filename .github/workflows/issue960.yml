@@ -11,7 +11,7 @@ jobs:
       matrix:
         python-version:
          
-          - "3.7" # should be *not* universal
+          - "3.6" # should be *not* universal
          
         archname: [x86_64]
         include:
