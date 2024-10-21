@@ -11,7 +11,7 @@ jobs:
       matrix:
         python-version:
          
-          - "3.6" # should be *not* universal
+          - "3.7" # should be *not* universal
          
         archname: [x86_64]
         include:
@@ -22,11 +22,7 @@ jobs:
          
         
     steps:
-      - name: Install missing libraries
-        if: matrix.archname == 'x86_64'
-        run: |
-          brew install gettext
-          brew link --force gettext
+  
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
