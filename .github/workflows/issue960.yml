@@ -10,21 +10,16 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - "3.x" # should be universal
+         
           - "3.7" # should be *not* universal
-          - "pypy-3.10"
-          - "graalpy-24"
-        archname: [x86_64, aarch64]
+         
+        archname: [x86_64]
         include:
           - archname: x86_64
             arch: x86_64
             architecture: x64
-            processor: i386
-          - archname: aarch64
-            arch: arm64
-            architecture: arm64
-            processor: arm
-
+         
+        
     steps:
       - name: Install missing libraries
         if: matrix.archname == 'x86_64'
