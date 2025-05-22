@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest, macos-13, ubuntu-24.04-arm, windows-11-arm]
+        os: [windows-latest, ubuntu-latest, macos-latest, macos-13]
   
     steps:
     - name: Checkout code
@@ -20,6 +20,9 @@ jobs:
       with:
         python-version: '3.12'
         pip-version: '23'
+        cache: 'pip'
         
     - name: Check pip version
       run: pip --version
+
+    - run: pip install -r requirements.txt
