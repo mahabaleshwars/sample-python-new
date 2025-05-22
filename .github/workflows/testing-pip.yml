@@ -18,7 +18,8 @@ jobs:
     - name: Set up Python
       uses: gowridurgad/setup-python@pipversion
       with:
-        python-version-file : '.python-version'
+        python-version : '3.12'
+        check-latest: true
         pip-version: '24'
        
         
