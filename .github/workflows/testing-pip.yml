@@ -19,7 +19,7 @@ jobs:
       uses: gowridurgad/setup-python@pipversion
       with:
         python-version: '3.13'
-        pip-version: '24'
+        pip-version: '23'
         cache: 'pip'
         
     - name: Check pip version
