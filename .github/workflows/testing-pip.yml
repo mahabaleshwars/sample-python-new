@@ -18,7 +18,7 @@ jobs:
     - name: Set up Python
       uses: gowridurgad/setup-python@pipversion
       with:
-        python-version: 'graalpy-24.0.2' 
+        python-version: 'graalpy-23.1.2' 
         pip-version: '23'
 
     - name: Check pip version
