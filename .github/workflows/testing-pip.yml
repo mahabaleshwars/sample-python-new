@@ -20,6 +20,7 @@ jobs:
       with:
         python-version: '3.13t'
         pip-version: '23'
+        architecture: arm64
 
     - name: Check pip version
       run: pip --version
