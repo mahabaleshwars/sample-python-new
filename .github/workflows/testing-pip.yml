@@ -19,8 +19,8 @@ jobs:
       uses: gowridurgad/setup-python@pipversion
       with:
         python-version-file : '.python-version'
-        pip-version: '23'
-        cache: 'pip'
+        pip-version: '24'
+       
         
     - name: Check pip version
       run: pip --version
