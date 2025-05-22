@@ -1,0 +1,7 @@
+# setup
+setuptools==58.0.0
+
+# install
+
+fiona==1.9.5
+tensorrt==10.6.0
