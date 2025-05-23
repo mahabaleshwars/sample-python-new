@@ -25,6 +25,7 @@ jobs:
         
     - name: Check pip version
       run: pip --version
+    - run: pip install poetry
     - run: poetry install
 
   
