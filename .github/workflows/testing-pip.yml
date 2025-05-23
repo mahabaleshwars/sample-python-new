@@ -21,6 +21,12 @@ jobs:
         python-version : '3.9'
         pip-version: '24'
         cache: 'poetry'
+
+    - name: Install Poetry using pip
+      run: |
+        pip install poetry
+        echo "$HOME/.local/bin" >> $GITHUB_PATH  # On Linux/macOS
+      shell: bash
        
         
     - name: Check pip version
