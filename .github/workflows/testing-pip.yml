@@ -19,10 +19,14 @@ jobs:
       uses: gowridurgad/setup-python@pipversion
       with:
         python-version : '3.12'
-        pip-version: '890'
+        pip-version: '24'
+        cache: 'pipenv'
        
         
     - name: Check pip version
       run: pip --version
+    - name: Install pipenv
+      run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
+    - run: pipenv install
 
   
