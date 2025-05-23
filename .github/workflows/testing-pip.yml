@@ -18,7 +18,7 @@ jobs:
     - name: Set up Python
       uses: gowridurgad/setup-python@pipversion
       with:
-        python-version : '3.9'
+        python-version : '3.12'
         pip-version: '24'
         cache: 'poetry'
 
