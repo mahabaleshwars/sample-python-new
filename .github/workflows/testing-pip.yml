@@ -19,7 +19,7 @@ jobs:
       uses: gowridurgad/setup-python@pipversion
       with:
         python-version : '3.12'
-        pip-version: ''
+        pip-version: '890'
        
         
     - name: Check pip version
