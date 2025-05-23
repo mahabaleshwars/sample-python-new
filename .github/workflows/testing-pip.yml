@@ -20,7 +20,7 @@ jobs:
       with:
         python-version : '3.12'
         check-latest: true
-        pip-version: '24'
+        pip-version: ''
        
         
     - name: Check pip version
