@@ -22,12 +22,12 @@ jobs:
       with:
         python-version : '3.9'
         pip-version: '24'
-        cache: 'poetry'
-       
-        
+        cache: 'pip'
+        cache-dependency-path: '**/requirements.txt'
+             
     - name: Check pip version
       run: pip --version
-    - run: pip install poetry
+
    
 
   
