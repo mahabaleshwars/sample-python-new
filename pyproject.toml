@@ -4,5 +4,5 @@ version = "0.1.0"
 description = "My package description"
 authors = ["gowridurgad <gowridurga.d@github.com>"]
 [tool.poetry.dependencies]
-python = "<3.10"
+python = ">=3.10,<3.14"
 
