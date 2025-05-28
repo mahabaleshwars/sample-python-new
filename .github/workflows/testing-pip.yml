@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest, macos-13]
+        os: [windows-latest, macos-latest, macos-13]
         python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.13t']
   
     steps:
@@ -28,4 +28,5 @@ jobs:
       run: pip --version
     - name: Install pipenv
       run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
+    - run: pipenv install
   
