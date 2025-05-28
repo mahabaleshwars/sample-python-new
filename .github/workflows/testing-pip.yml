@@ -10,7 +10,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest, macos-13]
-        python-version: ['pypy3.8', 'pypy3.9', 'pypy3.10', 'pypy3.11']
   
     steps:
     - name: Checkout code
@@ -19,7 +18,8 @@ jobs:
     - name: Set up Python
       uses: gowridurgad/setup-python@pipversion
       with:
-        python-version: '${{ matrix.python-version }}'
+        python-version: '3.13'
+        freethreaded: true
         pip-version: '23'
 
     - name: Check pip version
