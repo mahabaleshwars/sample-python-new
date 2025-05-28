@@ -1,3 +1,4 @@
+
 name: pip-testing
 
 on:
@@ -9,7 +10,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest, macos-13]
+        os: [windows-latest, ubuntu-latest, macos-latest, macos-13, ubuntu-24.04-arm, windows-11-arm]
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.13t']
   
     steps:
     - name: Checkout code
@@ -18,9 +20,8 @@ jobs:
     - name: Set up Python
       uses: gowridurgad/setup-python@pipversion
       with:
-        python-version: '3.13'
-        freethreaded: true
+        python-version: '${{ matrix.python-version }}'
         pip-version: '23'
-
+        
     - name: Check pip version
       run: pip --version
