@@ -20,7 +20,7 @@ jobs:
       uses: gowridurgad/setup-python@pipversion
       with:
         python-version : '${{ matrix.python-version }}'
-        pip-version: '23.0'
+        pip-version: '23.1.1'
         
        
         
