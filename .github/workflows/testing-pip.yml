@@ -20,11 +20,10 @@ jobs:
       uses: gowridurgad/setup-python@pipversion
       with:
         python-version : '${{ matrix.python-version }}'
-        pip-version: '24.1.1'
+        pip-version: 'abc'
         
        
         
     - name: Check pip version
       run: pip --version
    
-  
