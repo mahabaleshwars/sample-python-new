@@ -13,5 +13,6 @@ runs:
         cache-dependency-path: pipfile
     - name: Install pipenv
       run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
+      shell: bash
     - run: pipenv install
       shell: bash
