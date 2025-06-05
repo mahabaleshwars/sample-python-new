@@ -1,4 +1,4 @@
-name: 'Composite Action Example'
+name: 'Composite Action'
 description: 'A composite action to checkout code and set up Node.js'
 runs:
   using: 'composite'
@@ -10,7 +10,7 @@ runs:
       with:
         python-version: '3.11'
         cache: 'pip'
-        cache-dependency-path: requirements.txt
+        cache-dependency-path: **/requirements.txt 
     - name: Install dependencies
       run: pip install -r requirements.txt
       shell: bash
