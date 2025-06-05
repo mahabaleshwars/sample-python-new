@@ -8,9 +8,10 @@ runs:
     - name: Set up python
       uses: aparnajyothi-y/setup-python@Feature-request#476
       with:
-        python-version-file : '.python-version'
+        python-version : '3.12'
         cache: 'pip'
         cache-dependency-path: requirements.txt
+        check-latest: true
         
         
     - name: Install dependencies
