@@ -1,4 +1,4 @@
-name: 'Composite Action'
+name: 'Composite Action Example'
 description: 'A composite action to checkout code and set up Node.js'
 runs:
   using: 'composite'
@@ -8,11 +8,10 @@ runs:
     - name: Set up python
       uses: aparnajyothi-y/setup-python@Feature-request#476
       with:
-        python-version: '3.11'
-        cache: 'pipenv'
-        cache-dependency-path: "Pipfile.lock"
-    - name: Install pipenv
-      run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
-      shell: bash
-    - run: pipenv install
+        python-version: '3.13t'
+        cache: 'pip'
+        cache-dependency-path: requirements.txt
+        
+    - name: Install dependencies
+      run: pip install -r requirements.txt
       shell: bash
