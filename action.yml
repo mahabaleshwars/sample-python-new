@@ -11,9 +11,9 @@ runs:
     - name: Set up python
       uses: aparnajyothi-y/setup-python@Feature-request#476
       with:
-        python-version: '3.11'
+        python-version: '3.9'
         cache: 'poetry'
-        cache-dependency-path: "**/pyproject.toml"
+        cache-dependency-path: pyproject.toml
     - name: Install dependencies
-      run: poetry install
+      run: pip install poetry
       shell: bash
