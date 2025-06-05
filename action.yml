@@ -2,11 +2,6 @@ name: 'Composite Action Example'
 description: 'A composite action to checkout code and set up Node.js'
 runs:
   using: 'composite'
-  strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest, macos-13]
-        python-version: ['3.9', '3.10', '3.11', '3.12','3.13t' ]
   steps:
     - name: Checkout code
       uses: actions/checkout@v4
