@@ -6,8 +6,7 @@ runs:
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Set up python
-      # uses: aparnajyothi-y/setup-python@Feature-request#476
-      uses: actions/setup-python@v5
+      uses: aparnajyothi-y/setup-python@Feature-request#476
       with:
         python-version: '3.11'
         cache: 'pip'
