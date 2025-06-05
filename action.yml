@@ -14,3 +14,4 @@ runs:
     - name: Install pipenv
       run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
     - run: pipenv install
+      shell: bash
