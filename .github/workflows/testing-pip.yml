@@ -9,21 +9,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest,ubuntu-latest, macos-latest, macos-13]
-        python-version: [ '3.12' ]
-  
+        os: [windows-latest, ubuntu-latest, macos-latest, macos-13]
+        python-version: ['3.9', '3.10', '3.11', '3.12','3.13t' ]
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: gowridurgad/setup-python@pipversion
+      uses: priyagupta108/setup-python@pip-version-input
       with:
-        python-version : '${{ matrix.python-version }}'
-        pip-version: '23.1.1'
-        
-       
-        
+        python-version: '${{ matrix.python-version }}'
+        pip-version: '23'
+
     - name: Check pip version
       run: pip --version
-   
