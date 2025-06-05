@@ -5,15 +5,12 @@ runs:
   steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Install poetry
-      run: pipx install poetry
-      shell: bash
     - name: Set up python
       uses: aparnajyothi-y/setup-python@Feature-request#476
       with:
-        python-version: '3.9'
-        cache: 'poetry'
-        cache-dependency-path: pyproject.toml
-    - name: Install dependencies
-      run: pip install poetry
-      shell: bash
+        python-version: '3.11'
+        cache: 'pipenv'
+        cache-dependency-path: pipfile
+    - name: Install pipenv
+      run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
+    - run: pipenv install
