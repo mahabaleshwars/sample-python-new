@@ -8,9 +8,10 @@ runs:
     - name: Set up python
       uses: aparnajyothi-y/setup-python@Feature-request#476
       with:
-        python-version: '3.13t'
+        python-version-file : '.python-version'
         cache: 'pip'
         cache-dependency-path: requirements.txt
+        
         
     - name: Install dependencies
       run: pip install -r requirements.txt
