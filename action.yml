@@ -10,7 +10,7 @@ runs:
       with:
         python-version: '3.11'
         cache: 'pipenv'
-        cache-dependency-path: "pipfile.lock"
+        cache-dependency-path: "Pipfile.lock"
     - name: Install pipenv
       run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
       shell: bash
