@@ -18,7 +18,7 @@ jobs:
       run: pipx install poetry
 
     - name: Set up Python
-      uses: gowridurgad/setup-python@pipversion
+      uses: priyagupta108/setup-python@pip-version-input
       with:
         python-version : '3.9'
         pip-version: '24'
