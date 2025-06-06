@@ -10,7 +10,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest, macos-13]
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.13t']
   
     steps:
     - name: Checkout code
@@ -19,11 +18,13 @@ jobs:
     - name: Set up Python
       uses: priyagupta108/setup-python@pip-version-input
       with:
-        python-version: '${{ matrix.python-version }}'
+        python-version : '3.11'
         pip-version: '24'
-        cache: 'pip'
+        cache: 'pipenv'
+       
         
     - name: Check pip version
       run: pip --version
-
-    - run: pip install -r requirements.txt
+    - name: Install pipenv
+      run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
+    - run: pipenv install
