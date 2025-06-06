@@ -18,9 +18,10 @@ jobs:
     - name: Set up Python
       uses: priyagupta108/setup-python@pip-version-input
       with:
-        python-version : '3.12'
-        pip-version: '890'
-       
-        
+        python-version : '3.9'
+        pip-version: '24'
+        cache: 'pip'
+        cache-dependency-path: '**/requirements.txt'
+             
     - name: Check pip version
       run: pip --version
