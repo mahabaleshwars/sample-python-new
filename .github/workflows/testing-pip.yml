@@ -20,7 +20,7 @@ jobs:
       uses: priyagupta108/setup-python@pip-version-input
       with:
         python-version : '${{ matrix.python-version }}'
-        pip-version: 'abc'
+        pip-version: '23'
         
        
         
