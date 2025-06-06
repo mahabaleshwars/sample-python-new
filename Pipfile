@@ -28,4 +28,4 @@ werkzeug = "==2.3.7"
 [dev-packages]
 
 [requires]
-python_version = ">=3.13"
+python_version = "3.11"
