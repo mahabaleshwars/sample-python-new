@@ -19,7 +19,7 @@ jobs:
       uses: priyagupta108/setup-python@pip-version-input
       with:
         python-version : '3.12'
-        pip-version: ''
+        pip-version: '890'
        
         
     - name: Check pip version
