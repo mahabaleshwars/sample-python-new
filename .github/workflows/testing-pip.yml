@@ -9,20 +9,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest,ubuntu-latest, macos-latest, macos-13]
-        python-version: [ '3.12' ]
+        os: [windows-latest, ubuntu-latest, macos-latest, macos-13]
   
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: priyagupta108/setup-python@pip-version-input
+      uses: gowridurgad/setup-python@pipversion
       with:
-        python-version : '${{ matrix.python-version }}'
-        pip-version: '23.1.1'
-        
+        python-version : '3.11'
+        pip-version: '24'
+        cache: 'pipenv'
        
         
     - name: Check pip version
       run: pip --version
+    - name: Install pipenv
+      run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
+    - run: pipenv install
