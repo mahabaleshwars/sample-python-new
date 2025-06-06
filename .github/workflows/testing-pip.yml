@@ -18,7 +18,8 @@ jobs:
     - name: Set up Python
       uses: priyagupta108/setup-python@pip-version-input
       with:
-        python-version-file : '.python-version'
+        python-version : '3.12'
+        check-latest: true
         pip-version: '24'
        
         
