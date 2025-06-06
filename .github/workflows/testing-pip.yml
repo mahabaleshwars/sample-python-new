@@ -14,17 +14,13 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Install poetry
-      run: pipx install poetry
 
     - name: Set up Python
       uses: priyagupta108/setup-python@pip-version-input
       with:
-        python-version : '3.9'
+        python-version-file : '.python-version'
         pip-version: '24'
-        cache: 'poetry'
        
         
     - name: Check pip version
       run: pip --version
-    - run: pip install poetry
