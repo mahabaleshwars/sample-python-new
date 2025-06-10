@@ -5,17 +5,16 @@ runs:
   steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Install poetry
-      run: pipx install poetry
-      shell: bash
+    # - name: Install poetry
+    #   run: pipx install poetry
+    #   shell: bash
    
       
     - name: Set up python
       uses: aparnajyothi-y/setup-python@enhance-cache-dependency-path
       with:
-        python-version : '3.10'
-        cache: 'pipenv'
-        cache-dependency-path: pyproject.toml
+        with:
+          python-version: '3.12.6' 
     - run: poetry install --no-root
       shell: bash
         
