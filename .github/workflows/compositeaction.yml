@@ -8,4 +8,4 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Set up Node.js
-        uses: mahabaleshwars/setup-python-new@main
+        uses: mahabaleshwars/sample-python-new@main
