@@ -15,8 +15,8 @@ runs:
       with:
         with:
           python-version: '3.12.6' 
-    - run: poetry install --no-root
-      shell: bash
+    # - run: poetry install --no-root
+    #   shell: bash
         
         
         
