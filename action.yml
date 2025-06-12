@@ -4,9 +4,7 @@ inputs:
   python-version:
     description: 'Python version to use'
     required: false
-    default:
-        - 'pypy3.10' # the latest available version of PyPy that supports Python 3.10
-        - 'pypy3.10-v7.3.17' # Python 3.10 and PyPy 7.3.17
+    default: 'pypy3.10-v7.3.17' # Python 3.10 and PyPy 7.3.17
 runs:
   using: 'composite'
   steps:
