@@ -2,6 +2,11 @@ name: 'Composite Action Example'
 description: 'A composite action to checkout code and set up Node.js'
 runs:
   using: 'composite'
+  strategy:
+      matrix:
+        python-version:
+        - 'pypy3.10' # the latest available version of PyPy that supports Python 3.10
+        - 'pypy3.10-v7.3.17
   steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -13,7 +18,7 @@ runs:
     - name: Set up python
       uses: aparnajyothi-y/setup-python@enhance-cache-dependency-path
       with:
-          python-version: '3.x' 
+          python-version: ${{ matrix.python-version }} 
     # - run: poetry install --no-root
     #   shell: bash
         
