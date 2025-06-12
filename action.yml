@@ -4,12 +4,7 @@ runs:
   using: 'composite'
   steps:
     - name: Checkout code
-      uses: actions/checkout@v4
-    # - name: Install poetry
-    #   run: pipx install poetry
-    #   shell: bash
-   
-      
+      uses: actions/checkout@v4     
     - name: Set up python
       uses: aparnajyothi-y/setup-python@enhance-cache-dependency-path
       with:
