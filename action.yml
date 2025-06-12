@@ -20,8 +20,10 @@ runs:
       with:
           python-version: '3.13'
           check-latest: true
-    # - run: poetry install --no-root
-    #   shell: bash
+          cache: 'pipenv'
+    - name: Install pipenv
+      run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
+    - run: pipenv install
         
         
         
