@@ -18,12 +18,7 @@ runs:
     - name: Set up python
       uses: aparnajyothi-y/setup-python@enhance-cache-dependency-path
       with:
-          python-version: |
-            3.11
-            3.12
-            pypy3.10-nightly
-            pypy3.10
-            3.13
+          python-version-file: '.python-version'
     # - run: poetry install --no-root
     #   shell: bash
         
