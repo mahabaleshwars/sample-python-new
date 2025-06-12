@@ -13,7 +13,7 @@ runs:
     - name: Set up python
       uses: aparnajyothi-y/setup-python@enhance-cache-dependency-path
       with:
-          python-version: '3.13.0-alpha - 3.13.0' 
+          python-version: '3.x' 
     # - run: poetry install --no-root
     #   shell: bash
         
