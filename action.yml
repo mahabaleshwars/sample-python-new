@@ -18,7 +18,7 @@ runs:
     - name: Set up python
       uses: aparnajyothi-y/setup-python@enhance-cache-dependency-path
       with:
-          python-version-file: '.tool-versions'
+          python-version-file: 'pyproject.toml'
     # - run: poetry install --no-root
     #   shell: bash
         
