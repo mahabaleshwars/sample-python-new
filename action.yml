@@ -8,9 +8,11 @@ runs:
     - name: Set up python
       uses: aparnajyothi-y/setup-python@enhance-cache-dependency-path
       with:
-          python-version: '3.13'
+          python-version: '3.11'
           check-latest: true
           cache: 'pipenv'
     - name: Install pipenv
-      run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
+      run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python 
+      shell: bash
     - run: pipenv install
+      shell: bash
