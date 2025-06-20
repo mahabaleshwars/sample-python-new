@@ -13,7 +13,6 @@ runs:
           cache: 'pipenv'
           cache-dependency-path: |
             server/app/Pipfile.lock
-            # __test__/app/Pipfile.lock
     - name: Install pipenv
       run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python 
       shell: bash
