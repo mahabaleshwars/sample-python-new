@@ -4,17 +4,17 @@ runs:
   using: 'composite'
   steps:
     - name: Checkout code
-      uses: actions/checkout@v4     
+      uses: actions/checkout@v4  
     - name: Set up python
-      uses: actions/setup-python@v5
+      uses: aparnajyothi-y/setup-python@fix-overwriting
       with:
-          python-version: '3.11'
-          check-latest: true
-          cache: 'pipenv'
-          cache-dependency-path: |
-            server/app/Pipfile.lock
+        python-version:  '3.11'
+        cache: pipenv
+        cache-dependency-path: Pipfile
+        overwrite: false
     - name: Install pipenv
-      run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python 
+      run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
       shell: bash
     - run: pipenv install
       shell: bash
+        
