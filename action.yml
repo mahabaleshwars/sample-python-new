@@ -19,4 +19,5 @@ runs:
     #   shell: bash
     - name: pip install
       run: pip install -r requirements.txt
+      shell: bash
         
