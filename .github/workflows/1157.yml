@@ -4,7 +4,7 @@ on:
   
 jobs:
   run:
-    runs-on: Linux
+    runs-on: ubuntu-latest
     # container: ghcr.io/iterative/cml:0-dvc3-base1
     steps:
       - uses: actions/checkout@v3
