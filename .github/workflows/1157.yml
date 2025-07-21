@@ -1,0 +1,18 @@
+name: 1157 error
+on: 
+  workflow_dispatch:
+  
+jobs:
+  run:
+    runs-on: Linux
+    # container: ghcr.io/iterative/cml:0-dvc3-base1
+    steps:
+      - uses: actions/checkout@v3
+      - uses: iterative/setup-cml@v1
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip' # caching pip dependencies
+      # Install requirements
+      - run: pip install -r requirements.txt
