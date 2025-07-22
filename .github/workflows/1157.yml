@@ -1,4 +1,5 @@
 name: 1157 error
+
 on: 
   workflow_dispatch:
   
@@ -9,18 +10,25 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: iterative/setup-cml@v1
+      - name: Clear Python cache
+        run: |
+          sudo rm -rf /__t/Python
+          
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip' # caching pip dependencies
 
-      # Ensure pip is installed (if needed)
+      # Optional: Ensure pip is installed (important for pre-release Python)
       - name: Ensure pip is installed
-        run: python3 -m ensurepip --upgrade || true
+        run: python -m ensurepip --upgrade
 
       # Check Python and pip versions
       - name: Check Python and pip
         run: |
-          which python3
-          python3 --version
-          python3 -m pip --version
-
+          which python
+          python --version
+          python -m pip --version
       # Install requirements
       - name: Install requirements
-        run: python3 -m pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt
