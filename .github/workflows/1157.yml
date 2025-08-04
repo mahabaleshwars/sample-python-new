@@ -16,16 +16,13 @@ jobs:
       - name: Clear Python cache
         run: |
           sudo rm -rf /__t/Python
+      - name: Change ownership of /github/home
+        run: sudo chown -R $(whoami) /github/home
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
           cache: 'pip'
-      - name: Ensure pip is installed
-        run: python -m ensurepip --upgrade
-      - name: Check Python and pip
-        run: |
-          which python
-          python --version
-          python -m pip --version
       - name: Install requirements
-        run: python -m pip install --no-cache-dir -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
