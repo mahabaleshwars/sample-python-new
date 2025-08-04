@@ -3,23 +3,46 @@ name: 1157 error
 on: 
   workflow_dispatch:
 
+
 jobs:
   run:
     runs-on: ubuntu-latest
     container: 
       image: ghcr.io/iterative/cml:0-dvc3-base1
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      
       - uses: iterative/setup-cml@v1
-      - name: Clear Python cache
-        run: |
-          sudo rm -rf /__t/Python
-      - name: Change ownership of /github/home
-        run: sudo chown $(whoami) ~/.cache ~/.config
+      
+      # - name: Fix container permissions
+      #   run: |
+      #     sudo chown -R $(whoami) /github/home
+      #     mkdir -p ~/.cache/pip
+      
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-          cache: 'pip'
+      
+      - name: Get pip cache dir
+        id: pip-cache-dir
+        run: |
+          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
+      
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        id: pip-cache
+        with:
+          path: ${{ steps.pip-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      
       - name: Install requirements
         run: |
           pip install -r requirements.txt
+      
+      - name: Cache info
+        run: |
+          echo "Cache hit: ${{ steps.pip-cache.outputs.cache-hit }}"
+          echo "Cache dir: ${{ steps.pip-cache-dir.outputs.dir }}"
+          pip cache info
