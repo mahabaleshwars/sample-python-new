@@ -14,10 +14,10 @@ jobs:
       
       - uses: iterative/setup-cml@v1
       
-      # - name: Fix container permissions
-      #   run: |
-      #     sudo chown -R $(whoami) /github/home
-      #     mkdir -p ~/.cache/pip
+      - name: Fix container permissions
+        run: |
+          sudo chown -R $(whoami) /github/home
+          mkdir -p ~/.cache/pip
       
       - uses: actions/setup-python@v5
         with:
