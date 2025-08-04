@@ -13,9 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: iterative/setup-cml@v1
-      - name: Clear Python cache
-        run: |
-          sudo rm -rf /__t/Python
+      # - name: Clear Python cache
+      #   run: |
+      #     sudo rm -rf /__t/Python
       - name: Change ownership of /github/home
         run: sudo chown -R $(whoami) /github/home
       - uses: actions/setup-python@v5
