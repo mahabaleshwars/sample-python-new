@@ -15,5 +15,13 @@ jobs:
           python-version: "3.13"
           cache: "poetry"
 
+      - name: Install pipx
+        run: python -m pip install --user pipx && python -m pipx ensurepath
       - name: Install poetry
         run: pipx install poetry
+      - name: Install dependencies
+        run: poetry install
+      - name: Check Python and Poetry version
+        run: |
+          python --version
+          poetry --version
