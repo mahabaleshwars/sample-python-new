@@ -12,10 +12,10 @@ jobs:
       - name: Install Poetry with pipx
         run: pipx install poetry
       
-      - name: Use Python 3.13
+      - name: Use Python 3.13.3
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.13.3"
           cache: "poetry"
       
       - name: Force Poetry to use correct Python
