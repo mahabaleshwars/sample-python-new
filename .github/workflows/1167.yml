@@ -9,19 +9,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Install Poetry with pipx
+        run: pipx install poetry
+      
       - name: Use Python 3.13
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
           cache: "poetry"
-
-      - name: Install pipx
-        run: python -m pip install --user pipx && python -m pipx ensurepath
-      - name: Install poetry
-        run: pipx install poetry
-      - name: Install dependencies
-        run: poetry install
-      - name: Check Python and Poetry version
+      
+      - name: Force Poetry to use correct Python
         run: |
-          python --version
-          poetry --version
+          poetry env remove --all || true
+          poetry env use $(which python)
+          poetry env info
