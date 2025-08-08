@@ -19,9 +19,17 @@ jobs:
         with:
           python-version: '3.13'
           cache: 'poetry'
-      - run: poetry install
+      - name: Force Poetry to use correct Python
+        run: |
+          poetry env remove --all || true
+          poetry env use $(which python)
+          poetry env info
       - name: Show Poetry executable and version details
         run: |
           which poetry
           poetry --version
           poetry debug info
+      
+ 
+      
+     
