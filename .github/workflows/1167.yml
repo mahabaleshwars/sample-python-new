@@ -9,20 +9,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.13 with Poetry cache
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-          cache: 'poetry'
+      # - name: Set up Python 3.13 with Poetry cache
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.13'
+      #     cache: 'poetry'
 
-      - name: Install Poetry with pipx
-        run: pipx install poetry
+      # - name: Install Poetry with pipx
+      #   run: pipx install poetry
 
-      - name: Ensure Poetry uses runner Python
-        run: |
-          poetry env remove --all || true
-          poetry env use $(which python)
-          poetry env info
+      # - name: Ensure Poetry uses runner Python
+      #   run: |
+      #     poetry env remove --all || true
+      #     poetry env use $(which python)
+      #     poetry env info
 
       - name: Install dependencies
         run: poetry install
+      - name: Install poetry
+        run: pipx install poetry
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'poetry'
+      - run: poetry install
