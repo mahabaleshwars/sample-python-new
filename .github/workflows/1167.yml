@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install poetry
-        run: pipx install poetry
+        run: pipx install poetry env use ${{ steps.setup-python.outputs.python-path }}
       - name: Show Poetry executable and version details
         run: |
           which poetry
@@ -19,16 +19,8 @@ jobs:
         with:
           python-version: '3.13'
           cache: 'poetry'
-      - name: Force Poetry to use correct Python
-        run: |
-          poetry env remove --all || true
-          poetry env use $(which python)
-          poetry env info
-      - name: Show Poetry executable and version details
-        run: |
-          which poetry
-          poetry --version
-          poetry debug info
+      - name: Poetry
+        run: poetry install
       
  
       
