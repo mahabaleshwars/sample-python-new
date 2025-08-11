@@ -7,16 +7,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-     
-     
-      - name: setup-python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-          cache: 'poetry'
-      - name: Install poetry
-        run: pipx install poetry env use ${{ steps.setup-python.outputs.python-path }}
+    - uses: actions/checkout@v4
+    - name: Install poetry
+      run: pipx install poetry
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+        cache: 'poetry'
+    - run: poetry install
       
  
       
