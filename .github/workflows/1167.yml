@@ -8,20 +8,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install poetry
-        run: pipx install poetry env use ${{ steps.setup-python.outputs.python-path }}
-      - name: Show Poetry executable and version details
-        run: |
-          which poetry
-          poetry --version
-          poetry debug info
+     
+     
       - name: setup-python
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
           cache: 'poetry'
-      - name: Poetry
-        run: poetry install
+      - name: Install poetry
+        run: pipx install poetry env use ${{ steps.setup-python.outputs.python-path }}
       
  
       
