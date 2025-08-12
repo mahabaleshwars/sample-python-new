@@ -4,25 +4,20 @@ on:
   workflow_dispatch:
 
 jobs:
-  diagnose:
-    runs-on: ubuntu-latest
+  run:
+    runs-on: Linux
     container: ghcr.io/iterative/cml:0-dvc3-base1
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [3.8 ,3.9]  
     steps:
-      - name: Full system diagnosis
-        run: |
-          echo "=== Container OS Information ==="
-          cat /etc/os-release
-          uname -a
-          
-          echo -e "\n=== GLIBC Version in Container ==="
-          ldd --version
-          strings /lib/x86_64-linux-gnu/libc.so.6 | grep GLIBC_ | sort -V | tail -10
-          
-          echo -e "\n=== Container's Built-in Python ==="
-          /usr/bin/python3 --version 2>/dev/null || echo "No python3 in /usr/bin"
-          /usr/local/bin/python3 --version 2>/dev/null || echo "No python3 in /usr/local/bin"
-          which python3
-          python3 --version
-          
-          echo -e "\n=== GitHub Runner Host OS (for comparison) ==="
-          # This will show what setup-python binaries are compiled for
+      - uses: actions/checkout@v3
+      - uses: iterative/setup-cml@v1
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.version }}
+          cache: 'pip' # caching pip dependencies
+      # Install requirements
+      - run: pip install -r requirements.txt
