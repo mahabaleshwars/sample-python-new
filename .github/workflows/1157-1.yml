@@ -14,9 +14,6 @@ jobs:
           whoami
           which python3 2>/dev/null || echo "python3 not found"
           which pip3 2>/dev/null || echo "pip3 not found"
-          
-      - name: Clear Python cache
-        run: sudo rm -rf /__t/Python
         
       - name: Change ownership
         run: sudo chown -R $(whoami) /github/home
