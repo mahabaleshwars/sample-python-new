@@ -20,7 +20,7 @@ jobs:
         
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.10'
           
       - name: After setup-python
         run: |
@@ -40,7 +40,7 @@ jobs:
     steps:
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.10'
           
       - name: Check installation location
         run: |
