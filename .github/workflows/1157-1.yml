@@ -5,12 +5,12 @@ on:
 
 jobs:
   run:
-    runs-on: Linux
+    runs-on: ubuntu-latest
     container: ghcr.io/iterative/cml:0-dvc3-base1
     strategy:
       fail-fast: false
       matrix:
-        version: [3.8 ,3.9]  
+        version: [3.8, 3.9]  
     steps:
       - uses: actions/checkout@v3
       - uses: iterative/setup-cml@v1
