@@ -19,6 +19,11 @@ jobs:
         with:
           python-version: 3.13.5
           cache: 'poetry'
+          
+      - name: Set Poetry Python version
+        run: |
+            poetry env use python 3.13.5
+            poetry env info
 
       - name: Install dependencies
         run: poetry install
