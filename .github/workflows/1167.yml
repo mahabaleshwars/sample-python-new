@@ -22,7 +22,7 @@ jobs:
           
       - name: Set Poetry Python version
         run: |
-            poetry env use python 3.13.6
+            poetry env use 3.13.6
             poetry env info
 
       - name: Install dependencies
