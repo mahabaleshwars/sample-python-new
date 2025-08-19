@@ -15,7 +15,7 @@ jobs:
 
       - name: Install poetry
         run: |
-          pipx install poetry==2.0.1
+          pipx install
           poetry --version
 
       - name: Setup Python
