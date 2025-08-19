@@ -17,13 +17,13 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.13.5
+          python-version: 3.13.6
           cache: 'poetry'
           
-      - name: Set Poetry Python version
-        run: |
-            poetry env use python 3.13.5
-            poetry env info
+      # - name: Set Poetry Python version
+      #   run: |
+      #       poetry env use python 3.13.5
+      #       poetry env info
 
       - name: Install dependencies
         run: poetry install
