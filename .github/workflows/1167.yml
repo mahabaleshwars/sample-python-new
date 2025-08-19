@@ -12,18 +12,18 @@ jobs:
 
       - name: Install poetry
         run: |
-          pipx install poetry==2.1.4
+          pipx install poetry==2.0.1
           poetry --version
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.13.6
+          python-version: 3.13.3
           cache: 'poetry'
           
       # - name: Set Poetry Python version
       #   run: |
-      #       poetry env use 3.13.6
+      #       poetry env use 3.13.3
       #       poetry env info
 
       - name: Install dependencies
