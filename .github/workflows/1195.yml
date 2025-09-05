@@ -1,0 +1,24 @@
+name: Python Setup Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-python:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python (amd64)
+      uses: actions/setup-python@v6
+      with:
+        python-version: 'graalpy-24.2.2'
+        architecture: amd64
+        
+    - name: Set up Python (x64)
+      uses: actions/setup-python@v6
+      with:
+        python-version: 'graalpy-24.2.2'
+        architecture: x64
