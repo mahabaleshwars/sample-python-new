@@ -1,0 +1,28 @@
+name: Test Python ARM64 Installation
+on:
+  workflow_dispatch:
+    inputs:
+      python_version:
+        description: 'Python version to test'
+        required: true
+        default: '3.13.5'
+        type: choice
+        options:
+          - '3.13.5'
+          - '3.13.6'
+
+jobs:
+  test-arm64-installation:
+    runs-on: windows-11-arm64
+    steps:
+      - name: Setup Python ${{ inputs.python_version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+          architecture: 'arm64'
+      
+      - name: Test Python Installation
+        run: |
+          python -VVV
+          python -c "import platform; print(f'Architecture: {platform.machine()}')"
+          python -c "import sys; print(f'Platform: {sys.platform}')"
