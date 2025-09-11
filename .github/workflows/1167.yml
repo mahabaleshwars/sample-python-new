@@ -8,22 +8,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
- 
-      - name: Install poetry
-        run: |
-          pipx install poetry
-          poetry --version
       
-      - name: Setup Python
+      - name: "Install poetry"
+        run: pipx install "poetry==2.1.4"
+
+      - name: "Set up Python"
+        id: setup_python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.13.3
+          python-version: '3.13'
           cache: 'poetry'
-          
-      - name: Configure Poetry to use correct Python
-        run: |
-          poetry env use python3.13
-          poetry env info
 
       - name: "Install OS dependencies"
         run: |
@@ -36,4 +30,32 @@ jobs:
         env:
           POETRY_CACHE_DIR: ~/.cache/pypoetry
         run: poetry install --with test
+ 
+      # - name: Install poetry
+      #   run: |
+      #     pipx install poetry
+      #     poetry --version
+      
+      # - name: Setup Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: 3.13.3
+      #     cache: 'poetry'
+          
+      # - name: Configure Poetry to use correct Python
+      #   run: |
+      #     poetry env use python3.13
+      #     poetry env info
+
+      # - name: "Install OS dependencies"
+      #   run: |
+      #     sudo apt update
+      #     sudo apt install --no-install-recommends --no-install-suggests -y \
+      #       build-essential python3.13-dev python3-psutil \
+      #       libffi8 libldap-dev libldap2 libsasl2-dev libssl-dev libgeos-c1v5
+
+      # - name: "Run poetry install"
+      #   env:
+      #     POETRY_CACHE_DIR: ~/.cache/pypoetry
+      #   run: poetry install --with test
      
