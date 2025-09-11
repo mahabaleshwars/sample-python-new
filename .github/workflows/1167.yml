@@ -19,10 +19,10 @@ jobs:
           python-version: '3.13'
           cache: 'poetry'
           
-      - name: Configure Poetry to use correct Python
-        run: |
-          poetry env use python3.13
-          poetry env info
+      # - name: Configure Poetry to use correct Python
+      #   run: |
+      #     poetry env use python3.13
+      #     poetry env info
 
       - name: "Install OS dependencies"
         run: |
