@@ -25,22 +25,13 @@ jobs:
           poetry env use python3.13
           poetry env info
 
-      # - name: "Install OS dependencies"
-      #   run: |
-      #     sudo apt update
-      #     sudo apt install --no-install-recommends --no-install-suggests -y \
-      #       build-essential python3.13-dev python3-psutil \
-      #       libffi8 libldap-dev libldap2 libsasl2-dev libssl-dev libgeos-c1v5
+      - name: "Install OS dependencies"
+        run: |
+          sudo apt update
+          sudo apt install --no-install-recommends --no-install-suggests -y \
+            build-essential python3.13-dev python3-psutil \
+            libffi8 libldap-dev libldap2 libsasl2-dev libssl-dev libgeos-c1v5
 
-      # - name: Configure Poetry and install dependencies
-      #   run: |
-      #     echo "Python location: $(which python)"
-      #     echo "Python version: $(python --version)"
-      #     poetry env use "$(which python)"
-      #     poetry env info
-      #     poetry install --with test
-      #   env:
-      #     POETRY_CACHE_DIR: ~/.cache/pypoetry
       - name: "Run poetry install"
         env:
           POETRY_CACHE_DIR: ~/.cache/pypoetry
