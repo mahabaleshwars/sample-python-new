@@ -14,12 +14,12 @@ jobs:
           pipx install poetry
           poetry --version
 
-      - name: "Install OS dependencies"
-        run: |
-          sudo apt update
-          sudo apt install --no-install-recommends --no-install-suggests -y \
-            build-essential python3.13-dev python3-psutil \
-            libffi8 libldap-dev libldap2 libsasl2-dev libssl-dev libgeos-c1v5
+      # - name: "Install OS dependencies"
+      #   run: |
+      #     sudo apt update
+      #     sudo apt install --no-install-recommends --no-install-suggests -y \
+      #       build-essential python3.13-dev python3-psutil \
+      #       libffi8 libldap-dev libldap2 libsasl2-dev libssl-dev libgeos-c1v5
 
       - name: "Run poetry install"
         env:
