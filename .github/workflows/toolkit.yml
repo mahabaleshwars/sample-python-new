@@ -1,0 +1,299 @@
+name: Test Toolkit Enhancement for Composite Actions
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-composite-actions:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      # Build enhanced toolkit
+      - name: Build Enhanced Toolkit
+        id: toolkit
+        run: |
+          echo "🔧 Building toolkit from enhancement/1035 branch..."
+          git clone -b enhancement/1035 https://github.com/mahabaleshwars/toolkit.git toolkit
+          cd toolkit/packages/glob
+          npm install
+          npm run build
+          cd ../../..
+          echo "toolkit-path=${{ github.workspace }}/toolkit" >> $GITHUB_OUTPUT
+        shell: bash
+      
+      # Create composite actions for each setup action
+      - name: Create Test Composite Actions
+        run: |
+          # Python Composite Action
+          mkdir -p .github/actions/python-composite
+          cat > .github/actions/python-composite/requirements.txt << 'EOF'
+          pytest==7.4.3
+          black==23.11.0
+          mypy==1.7.1
+          requests==2.31.0
+          numpy==1.24.4
+          EOF
+          
+          cat > .github/actions/python-composite/action.yml << 'EOF'
+          name: 'Python Composite with Cache'
+          description: 'Test Python caching in composite action'
+          outputs:
+            cache-hit:
+              description: 'Cache hit status'
+              value: ${{ steps.cache.outputs.cache-hit }}
+            hash:
+              description: 'Generated hash'
+              value: ${{ steps.hash.outputs.hash }}
+          runs:
+            using: 'composite'
+            steps:
+              - name: Setup Python
+                uses: actions/setup-python@v5
+                with:
+                  python-version: '3.11'
+              
+              - name: Generate hash using enhanced toolkit
+                id: hash
+                shell: bash
+                run: |
+                  cd ${{ inputs.toolkit-path }}/packages/glob
+                  HASH=$(node -e "
+                    const glob = require('./lib/glob');
+                    const path = require('path');
+                    (async () => {
+                      try {
+                        const hash = await glob.hashFiles('requirements.txt', '', {
+                          workingDirectory: '${{ github.action_path }}'
+                        });
+                        console.log(hash || 'EMPTY');
+                      } catch(e) {
+                        console.error('ERROR:', e.message);
+                        process.exit(1);
+                      }
+                    })();
+                  ")
+                  echo "hash=$HASH" >> $GITHUB_OUTPUT
+                  echo "📊 Generated hash: $HASH"
+                  if [ "$HASH" == "EMPTY" ]; then
+                    echo "❌ Failed to generate hash!"
+                    exit 1
+                  fi
+              
+              - name: Cache Python dependencies
+                id: cache
+                uses: actions/cache@v4
+                with:
+                  path: |
+                    ~/.cache/pip
+                    ${{ runner.os == 'Windows' && '~\AppData\Local\pip\Cache' || '' }}
+                  key: python-${{ runner.os }}-${{ steps.hash.outputs.hash }}
+              
+              - name: Install dependencies
+                shell: bash
+                run: |
+                  echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
+                  pip install -r ${{ github.action_path }}/requirements.txt
+                  pip list
+          inputs:
+            toolkit-path:
+              description: 'Path to built toolkit'
+              required: true
+          EOF
+          
+          # Java Composite Action
+          mkdir -p .github/actions/java-composite
+          cat > .github/actions/java-composite/pom.xml << 'EOF'
+          <project>
+            <modelVersion>4.0.0</modelVersion>
+            <groupId>com.test</groupId>
+            <artifactId>test-project</artifactId>
+            <version>1.0.0</version>
+            <dependencies>
+              <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>4.13.2</version>
+              </dependency>
+            </dependencies>
+          </project>
+          EOF
+          
+          cat > .github/actions/java-composite/action.yml << 'EOF'
+          name: 'Java Composite with Cache'
+          description: 'Test Java caching in composite action'
+          outputs:
+            cache-hit:
+              description: 'Cache hit status'
+              value: ${{ steps.cache.outputs.cache-hit }}
+          runs:
+            using: 'composite'
+            steps:
+              - name: Setup Java
+                uses: actions/setup-java@v4
+                with:
+                  java-version: '17'
+                  distribution: 'temurin'
+              
+              - name: Generate hash for Maven
+                id: hash
+                shell: bash
+                run: |
+                  cd ${{ inputs.toolkit-path }}/packages/glob
+                  HASH=$(node -e "
+                    const glob = require('./lib/glob');
+                    (async () => {
+                      const hash = await glob.hashFiles('pom.xml', '', {
+                        workingDirectory: '${{ github.action_path }}'
+                      });
+                      console.log(hash || 'EMPTY');
+                    })();
+                  ")
+                  echo "hash=$HASH" >> $GITHUB_OUTPUT
+                  echo "Maven hash: $HASH"
+              
+              - name: Cache Maven dependencies
+                id: cache
+                uses: actions/cache@v4
+                with:
+                  path: ~/.m2/repository
+                  key: maven-${{ runner.os }}-${{ steps.hash.outputs.hash }}
+              
+              - name: Show cache status
+                shell: bash
+                run: |
+                  echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
+          inputs:
+            toolkit-path:
+              description: 'Path to built toolkit'
+              required: true
+          EOF
+          
+          # Go Composite Action
+          mkdir -p .github/actions/go-composite
+          cat > .github/actions/go-composite/go.mod << 'EOF'
+          module github.com/test/project
+          
+          go 1.21
+          
+          require (
+              github.com/stretchr/testify v1.8.4
+              github.com/gin-gonic/gin v1.9.1
+          )
+          EOF
+          
+          cat > .github/actions/go-composite/action.yml << 'EOF'
+          name: 'Go Composite with Cache'
+          description: 'Test Go caching in composite action'
+          outputs:
+            cache-hit:
+              description: 'Cache hit status'
+              value: ${{ steps.cache.outputs.cache-hit }}
+          runs:
+            using: 'composite'
+            steps:
+              - name: Setup Go
+                uses: actions/setup-go@v5
+                with:
+                  go-version: '1.21'
+              
+              - name: Generate hash for Go modules
+                id: hash
+                shell: bash
+                run: |
+                  cd ${{ inputs.toolkit-path }}/packages/glob
+                  HASH=$(node -e "
+                    const glob = require('./lib/glob');
+                    (async () => {
+                      const hash = await glob.hashFiles('go.mod', '', {
+                        workingDirectory: '${{ github.action_path }}'
+                      });
+                      console.log(hash || 'EMPTY');
+                    })();
+                  ")
+                  echo "hash=$HASH" >> $GITHUB_OUTPUT
+                  echo "Go modules hash: $HASH"
+              
+              - name: Cache Go modules
+                id: cache
+                uses: actions/cache@v4
+                with:
+                  path: |
+                    ~/go/pkg/mod
+                    ~/.cache/go-build
+                  key: go-${{ runner.os }}-${{ steps.hash.outputs.hash }}
+              
+              - name: Show cache status
+                shell: bash
+                run: |
+                  echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
+          inputs:
+            toolkit-path:
+              description: 'Path to built toolkit'
+              required: true
+          EOF
+        shell: bash
+      
+      # Test Python composite
+      - name: Test Python Composite (First Run)
+        id: python-first
+        uses: ./.github/actions/python-composite
+        with:
+          toolkit-path: ${{ steps.toolkit.outputs.toolkit-path }}
+      
+      - name: Clear Python packages
+        run: |
+          pip uninstall -y pytest black mypy requests numpy 2>/dev/null || true
+        shell: bash
+      
+      - name: Test Python Composite (Second Run - Should Hit Cache)
+        id: python-second
+        uses: ./.github/actions/python-composite
+        with:
+          toolkit-path: ${{ steps.toolkit.outputs.toolkit-path }}
+      
+      # Test Java composite
+      - name: Test Java Composite
+        uses: ./.github/actions/java-composite
+        with:
+          toolkit-path: ${{ steps.toolkit.outputs.toolkit-path }}
+      
+      # Test Go composite
+      - name: Test Go Composite
+        uses: ./.github/actions/go-composite
+        with:
+          toolkit-path: ${{ steps.toolkit.outputs.toolkit-path }}
+      
+      # Validate results
+      - name: Validate Results
+        run: |
+          echo "📊 Test Results Summary"
+          echo "======================="
+          echo ""
+          echo "Python Composite:"
+          echo "  First run hash: ${{ steps.python-first.outputs.hash }}"
+          echo "  First run cache hit: ${{ steps.python-first.outputs.cache-hit }}"
+          echo "  Second run cache hit: ${{ steps.python-second.outputs.cache-hit }}"
+          echo ""
+          
+          if [ "${{ steps.python-first.outputs.hash }}" == "EMPTY" ]; then
+            echo "❌ Python: Failed to generate hash"
+            exit 1
+          fi
+          
+          if [ "${{ steps.python-second.outputs.cache-hit }}" != "true" ]; then
+            echo "⚠️  Python: Cache was not hit on second run (might be first workflow run)"
+          else
+            echo "✅ Python: Cache working correctly!"
+          fi
+        shell: bash
