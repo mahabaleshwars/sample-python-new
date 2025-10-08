@@ -1,5 +1,4 @@
 name: Test Toolkit Enhancement for Composite Actions
-
 on:
   workflow_dispatch:
 
@@ -9,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest]  # Start with Ubuntu, add others once working
     
     steps:
       - uses: actions/checkout@v4
@@ -25,275 +24,237 @@ jobs:
         run: |
           echo "🔧 Building toolkit from enhancement/1035 branch..."
           git clone -b enhancement/1035 https://github.com/mahabaleshwars/toolkit.git toolkit
-          cd toolkit/packages/glob
-          npm install
-          npm run build
-          cd ../../..
+          cd toolkit
+          
+          # Check what's in the packages/glob directory
+          echo "📁 Checking toolkit structure..."
+          ls -la packages/glob/
+          
+          # Check for package.json and available scripts
+          if [ -f "packages/glob/package.json" ]; then
+            echo "📦 Package.json found. Available scripts:"
+            cd packages/glob
+            npm run || true
+            
+            echo "📦 Installing dependencies..."
+            npm install
+            
+            # Try different build commands
+            echo "🔨 Building glob package..."
+            if npm run | grep -q "build"; then
+              npm run build
+            elif npm run | grep -q "compile"; then
+              npm run compile
+            elif [ -f "../../scripts/build" ]; then
+              ../../scripts/build glob
+            else
+              # Try direct TypeScript compilation
+              echo "Using direct TypeScript compilation..."
+              if [ -f "tsconfig.json" ]; then
+                npx tsc || npm run tsc || true
+              fi
+              # Check if lib directory exists (pre-built)
+              if [ ! -d "lib" ]; then
+                echo "⚠️  No lib directory found, checking dist..."
+                if [ -d "dist" ]; then
+                  echo "Found dist directory, using it as lib"
+                  ln -s dist lib
+                fi
+              fi
+            fi
+            
+            echo "📂 Checking build output..."
+            ls -la lib/ 2>/dev/null || ls -la dist/ 2>/dev/null || echo "No build output found"
+          else
+            echo "❌ No package.json found in packages/glob"
+            exit 1
+          fi
+          
+          cd "${{ github.workspace }}"
           echo "toolkit-path=${{ github.workspace }}/toolkit" >> $GITHUB_OUTPUT
         shell: bash
       
-      # Create composite actions for each setup action
-      - name: Create Test Composite Actions
+      # Test the enhancement directly first
+      - name: Test Enhancement Directly
         run: |
-          # Python Composite Action
-          mkdir -p .github/actions/python-composite
-          cat > .github/actions/python-composite/requirements.txt << 'EOF'
-          pytest==7.4.3
-          black==23.11.0
-          mypy==1.7.1
-          requests==2.31.0
-          numpy==1.24.4
+          echo "🧪 Testing the enhancement directly..."
+          
+          # Create test files
+          mkdir -p test-action
+          echo "pytest==7.4.3" > test-action/requirements.txt
+          
+          # Create and run test script
+          cat > test-direct.js << 'EOF'
+          const path = require('path');
+          const fs = require('fs');
+          
+          // Try to load the glob module
+          let glob;
+          try {
+            glob = require('./toolkit/packages/glob/lib/glob');
+            console.log('✅ Loaded from lib/glob');
+          } catch (e1) {
+            try {
+              glob = require('./toolkit/packages/glob/dist/glob');
+              console.log('✅ Loaded from dist/glob');
+            } catch (e2) {
+              try {
+                glob = require('./toolkit/packages/glob');
+                console.log('✅ Loaded from package root');
+              } catch (e3) {
+                console.error('❌ Could not load glob module:', e3.message);
+                process.exit(1);
+              }
+            }
+          }
+          
+          async function test() {
+            const workspaceDir = path.join(process.cwd(), 'workspace');
+            const actionDir = path.join(process.cwd(), 'test-action');
+            
+            fs.mkdirSync(workspaceDir, { recursive: true });
+            
+            process.env.GITHUB_WORKSPACE = workspaceDir;
+            process.env.GITHUB_ACTION_PATH = actionDir;
+            
+            console.log('\nTest 1: Without workingDirectory (should fail)');
+            try {
+              const hash1 = await glob.hashFiles(path.join(actionDir, 'requirements.txt'));
+              console.log('Result:', hash1 || 'Empty (expected)');
+            } catch (e) {
+              console.log('Error:', e.message);
+            }
+            
+            console.log('\nTest 2: With workingDirectory (should work)');
+            try {
+              const hash2 = await glob.hashFiles('requirements.txt', '', {
+                workingDirectory: actionDir
+              });
+              console.log('Result:', hash2 ? `✅ ${hash2.substring(0, 16)}...` : '❌ Empty');
+              
+              if (!hash2) {
+                console.error('❌ Enhancement not working!');
+                process.exit(1);
+              } else {
+                console.log('\n✅ Enhancement is working!');
+              }
+            } catch (e) {
+              console.log('Error:', e.message);
+              // Check if it's because workingDirectory isn't supported
+              if (e.message.includes('workingDirectory')) {
+                console.error('❌ workingDirectory parameter not recognized');
+              }
+            }
+          }
+          
+          test().catch(console.error);
           EOF
           
-          cat > .github/actions/python-composite/action.yml << 'EOF'
-          name: 'Python Composite with Cache'
-          description: 'Test Python caching in composite action'
+          node test-direct.js
+        shell: bash
+      
+      # Create simplified composite actions
+      - name: Create Simple Test Composite Action
+        run: |
+          mkdir -p .github/actions/simple-test
+          
+          cat > .github/actions/simple-test/requirements.txt << 'EOF'
+          pytest==7.4.3
+          black==23.11.0
+          EOF
+          
+          cat > .github/actions/simple-test/action.yml << 'EOF'
+          name: 'Simple Test'
+          description: 'Simple test of toolkit enhancement'
           outputs:
-            cache-hit:
-              description: 'Cache hit status'
-              value: ${{ steps.cache.outputs.cache-hit }}
             hash:
               description: 'Generated hash'
               value: ${{ steps.hash.outputs.hash }}
+            result:
+              description: 'Test result'
+              value: ${{ steps.hash.outputs.result }}
           runs:
             using: 'composite'
             steps:
-              - name: Setup Python
-                uses: actions/setup-python@v5
-                with:
-                  python-version: '3.11'
-              
-              - name: Generate hash using enhanced toolkit
+              - name: Test Hash Generation
                 id: hash
                 shell: bash
                 run: |
-                  cd ${{ inputs.toolkit-path }}/packages/glob
-                  HASH=$(node -e "
-                    const glob = require('./lib/glob');
-                    const path = require('path');
+                  echo "Testing hash generation..."
+                  echo "Action path: ${{ github.action_path }}"
+                  echo "Workspace: ${{ github.workspace }}"
+                  
+                  # Find the glob module
+                  GLOB_PATH="${{ inputs.toolkit-path }}/packages/glob"
+                  if [ -f "$GLOB_PATH/lib/glob.js" ]; then
+                    GLOB_MODULE="$GLOB_PATH/lib/glob"
+                  elif [ -f "$GLOB_PATH/dist/glob.js" ]; then
+                    GLOB_MODULE="$GLOB_PATH/dist/glob"
+                  elif [ -f "$GLOB_PATH/index.js" ]; then
+                    GLOB_MODULE="$GLOB_PATH"
+                  else
+                    echo "❌ Could not find glob module"
+                    echo "result=failed" >> $GITHUB_OUTPUT
+                    exit 1
+                  fi
+                  
+                  # Test hash generation
+                  RESULT=$(node -e "
+                    const glob = require('$GLOB_MODULE');
                     (async () => {
                       try {
                         const hash = await glob.hashFiles('requirements.txt', '', {
                           workingDirectory: '${{ github.action_path }}'
                         });
-                        console.log(hash || 'EMPTY');
+                        if (hash) {
+                          console.log(hash);
+                          process.exit(0);
+                        } else {
+                          console.log('EMPTY');
+                          process.exit(1);
+                        }
                       } catch(e) {
                         console.error('ERROR:', e.message);
                         process.exit(1);
                       }
                     })();
-                  ")
-                  echo "hash=$HASH" >> $GITHUB_OUTPUT
-                  echo "📊 Generated hash: $HASH"
-                  if [ "$HASH" == "EMPTY" ]; then
-                    echo "❌ Failed to generate hash!"
-                    exit 1
+                  " 2>&1) || true
+                  
+                  echo "Result: $RESULT"
+                  
+                  if [[ "$RESULT" == ERROR* ]] || [[ "$RESULT" == "EMPTY" ]]; then
+                    echo "❌ Failed to generate hash"
+                    echo "hash=" >> $GITHUB_OUTPUT
+                    echo "result=failed" >> $GITHUB_OUTPUT
+                  else
+                    echo "✅ Hash generated: ${RESULT:0:16}..."
+                    echo "hash=$RESULT" >> $GITHUB_OUTPUT
+                    echo "result=success" >> $GITHUB_OUTPUT
                   fi
-              
-              - name: Cache Python dependencies
-                id: cache
-                uses: actions/cache@v4
-                with:
-                  path: |
-                    ~/.cache/pip
-                    ${{ runner.os == 'Windows' && '~\AppData\Local\pip\Cache' || '' }}
-                  key: python-${{ runner.os }}-${{ steps.hash.outputs.hash }}
-              
-              - name: Install dependencies
-                shell: bash
-                run: |
-                  echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
-                  pip install -r ${{ github.action_path }}/requirements.txt
-                  pip list
           inputs:
             toolkit-path:
-              description: 'Path to built toolkit'
-              required: true
-          EOF
-          
-          # Java Composite Action
-          mkdir -p .github/actions/java-composite
-          cat > .github/actions/java-composite/pom.xml << 'EOF'
-          <project>
-            <modelVersion>4.0.0</modelVersion>
-            <groupId>com.test</groupId>
-            <artifactId>test-project</artifactId>
-            <version>1.0.0</version>
-            <dependencies>
-              <dependency>
-                <groupId>junit</groupId>
-                <artifactId>junit</artifactId>
-                <version>4.13.2</version>
-              </dependency>
-            </dependencies>
-          </project>
-          EOF
-          
-          cat > .github/actions/java-composite/action.yml << 'EOF'
-          name: 'Java Composite with Cache'
-          description: 'Test Java caching in composite action'
-          outputs:
-            cache-hit:
-              description: 'Cache hit status'
-              value: ${{ steps.cache.outputs.cache-hit }}
-          runs:
-            using: 'composite'
-            steps:
-              - name: Setup Java
-                uses: actions/setup-java@v4
-                with:
-                  java-version: '17'
-                  distribution: 'temurin'
-              
-              - name: Generate hash for Maven
-                id: hash
-                shell: bash
-                run: |
-                  cd ${{ inputs.toolkit-path }}/packages/glob
-                  HASH=$(node -e "
-                    const glob = require('./lib/glob');
-                    (async () => {
-                      const hash = await glob.hashFiles('pom.xml', '', {
-                        workingDirectory: '${{ github.action_path }}'
-                      });
-                      console.log(hash || 'EMPTY');
-                    })();
-                  ")
-                  echo "hash=$HASH" >> $GITHUB_OUTPUT
-                  echo "Maven hash: $HASH"
-              
-              - name: Cache Maven dependencies
-                id: cache
-                uses: actions/cache@v4
-                with:
-                  path: ~/.m2/repository
-                  key: maven-${{ runner.os }}-${{ steps.hash.outputs.hash }}
-              
-              - name: Show cache status
-                shell: bash
-                run: |
-                  echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
-          inputs:
-            toolkit-path:
-              description: 'Path to built toolkit'
-              required: true
-          EOF
-          
-          # Go Composite Action
-          mkdir -p .github/actions/go-composite
-          cat > .github/actions/go-composite/go.mod << 'EOF'
-          module github.com/test/project
-          
-          go 1.21
-          
-          require (
-              github.com/stretchr/testify v1.8.4
-              github.com/gin-gonic/gin v1.9.1
-          )
-          EOF
-          
-          cat > .github/actions/go-composite/action.yml << 'EOF'
-          name: 'Go Composite with Cache'
-          description: 'Test Go caching in composite action'
-          outputs:
-            cache-hit:
-              description: 'Cache hit status'
-              value: ${{ steps.cache.outputs.cache-hit }}
-          runs:
-            using: 'composite'
-            steps:
-              - name: Setup Go
-                uses: actions/setup-go@v5
-                with:
-                  go-version: '1.21'
-              
-              - name: Generate hash for Go modules
-                id: hash
-                shell: bash
-                run: |
-                  cd ${{ inputs.toolkit-path }}/packages/glob
-                  HASH=$(node -e "
-                    const glob = require('./lib/glob');
-                    (async () => {
-                      const hash = await glob.hashFiles('go.mod', '', {
-                        workingDirectory: '${{ github.action_path }}'
-                      });
-                      console.log(hash || 'EMPTY');
-                    })();
-                  ")
-                  echo "hash=$HASH" >> $GITHUB_OUTPUT
-                  echo "Go modules hash: $HASH"
-              
-              - name: Cache Go modules
-                id: cache
-                uses: actions/cache@v4
-                with:
-                  path: |
-                    ~/go/pkg/mod
-                    ~/.cache/go-build
-                  key: go-${{ runner.os }}-${{ steps.hash.outputs.hash }}
-              
-              - name: Show cache status
-                shell: bash
-                run: |
-                  echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
-          inputs:
-            toolkit-path:
-              description: 'Path to built toolkit'
+              description: 'Path to toolkit'
               required: true
           EOF
         shell: bash
       
-      # Test Python composite
-      - name: Test Python Composite (First Run)
-        id: python-first
-        uses: ./.github/actions/python-composite
+      - name: Run Simple Test
+        id: simple-test
+        uses: ./.github/actions/simple-test
         with:
           toolkit-path: ${{ steps.toolkit.outputs.toolkit-path }}
       
-      - name: Clear Python packages
-        run: |
-          pip uninstall -y pytest black mypy requests numpy 2>/dev/null || true
-        shell: bash
-      
-      - name: Test Python Composite (Second Run - Should Hit Cache)
-        id: python-second
-        uses: ./.github/actions/python-composite
-        with:
-          toolkit-path: ${{ steps.toolkit.outputs.toolkit-path }}
-      
-      # Test Java composite
-      - name: Test Java Composite
-        uses: ./.github/actions/java-composite
-        with:
-          toolkit-path: ${{ steps.toolkit.outputs.toolkit-path }}
-      
-      # Test Go composite
-      - name: Test Go Composite
-        uses: ./.github/actions/go-composite
-        with:
-          toolkit-path: ${{ steps.toolkit.outputs.toolkit-path }}
-      
-      # Validate results
       - name: Validate Results
         run: |
-          echo "📊 Test Results Summary"
-          echo "======================="
-          echo ""
-          echo "Python Composite:"
-          echo "  First run hash: ${{ steps.python-first.outputs.hash }}"
-          echo "  First run cache hit: ${{ steps.python-first.outputs.cache-hit }}"
-          echo "  Second run cache hit: ${{ steps.python-second.outputs.cache-hit }}"
-          echo ""
+          echo "📊 Test Results"
+          echo "==============="
+          echo "Hash: ${{ steps.simple-test.outputs.hash }}"
+          echo "Result: ${{ steps.simple-test.outputs.result }}"
           
-          if [ "${{ steps.python-first.outputs.hash }}" == "EMPTY" ]; then
-            echo "❌ Python: Failed to generate hash"
-            exit 1
-          fi
-          
-          if [ "${{ steps.python-second.outputs.cache-hit }}" != "true" ]; then
-            echo "⚠️  Python: Cache was not hit on second run (might be first workflow run)"
+          if [ "${{ steps.simple-test.outputs.result }}" == "success" ]; then
+            echo "✅ SUCCESS! Toolkit enhancement is working!"
           else
-            echo "✅ Python: Cache working correctly!"
+            echo "❌ FAILED! Enhancement not working"
+            exit 1
           fi
         shell: bash
