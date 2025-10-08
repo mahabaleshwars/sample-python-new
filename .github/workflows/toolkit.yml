@@ -2,13 +2,14 @@ name: Test Toolkit Enhancement for Composite Actions
 on:
   workflow_dispatch:
 
+
 jobs:
   test-composite-actions:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]  # Start with Ubuntu, add others once working
+        os: [ubuntu-latest]
     
     steps:
       - uses: actions/checkout@v4
@@ -26,235 +27,253 @@ jobs:
           git clone -b enhancement/1035 https://github.com/mahabaleshwars/toolkit.git toolkit
           cd toolkit
           
-          # Check what's in the packages/glob directory
-          echo "📁 Checking toolkit structure..."
+          # Check and build glob package
+          echo "📁 Checking toolkit/packages/glob structure..."
           ls -la packages/glob/
           
-          # Check for package.json and available scripts
-          if [ -f "packages/glob/package.json" ]; then
-            echo "📦 Package.json found. Available scripts:"
-            cd packages/glob
-            npm run || true
-            
-            echo "📦 Installing dependencies..."
-            npm install
-            
-            # Try different build commands
-            echo "🔨 Building glob package..."
-            if npm run | grep -q "build"; then
-              npm run build
-            elif npm run | grep -q "compile"; then
-              npm run compile
-            elif [ -f "../../scripts/build" ]; then
-              ../../scripts/build glob
-            else
-              # Try direct TypeScript compilation
-              echo "Using direct TypeScript compilation..."
-              if [ -f "tsconfig.json" ]; then
-                npx tsc || npm run tsc || true
-              fi
-              # Check if lib directory exists (pre-built)
-              if [ ! -d "lib" ]; then
-                echo "⚠️  No lib directory found, checking dist..."
-                if [ -d "dist" ]; then
-                  echo "Found dist directory, using it as lib"
-                  ln -s dist lib
-                fi
-              fi
-            fi
-            
-            echo "📂 Checking build output..."
-            ls -la lib/ 2>/dev/null || ls -la dist/ 2>/dev/null || echo "No build output found"
+          cd packages/glob
+          echo "📦 Installing dependencies..."
+          npm install
+          
+          # Check for TypeScript compilation
+          if [ -f "tsconfig.json" ]; then
+            echo "🔨 Compiling TypeScript..."
+            npx tsc || echo "TypeScript compilation attempted"
+          fi
+          
+          # Check what we have
+          echo "📂 Checking for compiled files..."
+          if [ -d "lib" ]; then
+            echo "✅ lib directory found"
+            ls -la lib/ | head -10
+          elif [ -d "dist" ]; then
+            echo "✅ dist directory found"
+            ls -la dist/ | head -10
           else
-            echo "❌ No package.json found in packages/glob"
-            exit 1
+            echo "⚠️ No compiled output found, checking source..."
+            ls -la src/ 2>/dev/null | head -10
           fi
           
           cd "${{ github.workspace }}"
-          echo "toolkit-path=${{ github.workspace }}/toolkit" >> $GITHUB_OUTPUT
+          TOOLKIT_FULL_PATH="${{ github.workspace }}/toolkit"
+          echo "toolkit-path=${TOOLKIT_FULL_PATH}" >> $GITHUB_OUTPUT
+          echo "✅ Toolkit path set to: ${TOOLKIT_FULL_PATH}"
         shell: bash
       
-      # Test the enhancement directly first
+      # Direct test first (no composite action)
       - name: Test Enhancement Directly
         run: |
-          echo "🧪 Testing the enhancement directly..."
+          echo "🧪 Direct test of enhancement..."
           
-          # Create test files
+          # Create test structure
+          mkdir -p workspace
           mkdir -p test-action
           echo "pytest==7.4.3" > test-action/requirements.txt
+          echo "black==23.11.0" >> test-action/requirements.txt
           
-          # Create and run test script
-          cat > test-direct.js << 'EOF'
+          # Test script
+          cat > test-enhancement.js << 'EOF'
           const path = require('path');
           const fs = require('fs');
           
-          // Try to load the glob module
+          // Find and load glob module
+          const toolkitPath = './toolkit/packages/glob';
           let glob;
-          try {
-            glob = require('./toolkit/packages/glob/lib/glob');
-            console.log('✅ Loaded from lib/glob');
-          } catch (e1) {
-            try {
-              glob = require('./toolkit/packages/glob/dist/glob');
-              console.log('✅ Loaded from dist/glob');
-            } catch (e2) {
+          
+          // Try different locations
+          const possiblePaths = [
+            path.join(toolkitPath, 'lib', 'glob.js'),
+            path.join(toolkitPath, 'lib', 'index.js'),
+            path.join(toolkitPath, 'dist', 'glob.js'),
+            path.join(toolkitPath, 'dist', 'index.js'),
+            path.join(toolkitPath, 'src', 'glob.ts'),
+            path.join(toolkitPath, 'index.js'),
+          ];
+          
+          console.log('Searching for glob module...');
+          for (const p of possiblePaths) {
+            if (fs.existsSync(p)) {
+              console.log(`Found: ${p}`);
               try {
-                glob = require('./toolkit/packages/glob');
-                console.log('✅ Loaded from package root');
-              } catch (e3) {
-                console.error('❌ Could not load glob module:', e3.message);
-                process.exit(1);
+                if (p.endsWith('.ts')) {
+                  console.log('TypeScript file found, need compiled version');
+                  continue;
+                }
+                glob = require(path.resolve(p.replace('.js', '')));
+                console.log('✅ Module loaded successfully');
+                break;
+              } catch (e) {
+                console.log(`Failed to load: ${e.message}`);
               }
             }
           }
           
-          async function test() {
-            const workspaceDir = path.join(process.cwd(), 'workspace');
-            const actionDir = path.join(process.cwd(), 'test-action');
-            
-            fs.mkdirSync(workspaceDir, { recursive: true });
+          if (!glob) {
+            // Try loading the package directly
+            try {
+              glob = require(path.resolve(toolkitPath));
+              console.log('✅ Loaded package directly');
+            } catch (e) {
+              console.error('❌ Could not load glob module');
+              process.exit(1);
+            }
+          }
+          
+          async function runTests() {
+            const workspaceDir = path.resolve('./workspace');
+            const actionDir = path.resolve('./test-action');
             
             process.env.GITHUB_WORKSPACE = workspaceDir;
             process.env.GITHUB_ACTION_PATH = actionDir;
             
-            console.log('\nTest 1: Without workingDirectory (should fail)');
-            try {
-              const hash1 = await glob.hashFiles(path.join(actionDir, 'requirements.txt'));
-              console.log('Result:', hash1 || 'Empty (expected)');
-            } catch (e) {
-              console.log('Error:', e.message);
-            }
+            console.log(`\nWorkspace: ${workspaceDir}`);
+            console.log(`Action Dir: ${actionDir}`);
+            console.log(`File exists: ${fs.existsSync(path.join(actionDir, 'requirements.txt'))}\n`);
             
+            // Test 1: Old behavior
+            console.log('Test 1: Without workingDirectory (should return empty)');
+            const fullPath = path.join(actionDir, 'requirements.txt');
+            const hash1 = await glob.hashFiles(fullPath);
+            console.log(`Result: ${hash1 || 'Empty ✅ (expected)'}`);
+            
+            // Test 2: New behavior
             console.log('\nTest 2: With workingDirectory (should work)');
-            try {
-              const hash2 = await glob.hashFiles('requirements.txt', '', {
-                workingDirectory: actionDir
-              });
-              console.log('Result:', hash2 ? `✅ ${hash2.substring(0, 16)}...` : '❌ Empty');
-              
-              if (!hash2) {
-                console.error('❌ Enhancement not working!');
-                process.exit(1);
-              } else {
-                console.log('\n✅ Enhancement is working!');
-              }
-            } catch (e) {
-              console.log('Error:', e.message);
-              // Check if it's because workingDirectory isn't supported
-              if (e.message.includes('workingDirectory')) {
-                console.error('❌ workingDirectory parameter not recognized');
-              }
+            const hash2 = await glob.hashFiles('requirements.txt', '', {
+              workingDirectory: actionDir
+            });
+            
+            if (hash2) {
+              console.log(`Result: ✅ Hash generated: ${hash2.substring(0, 16)}...`);
+              console.log('\n🎉 SUCCESS! Enhancement is working!');
+            } else {
+              console.log('Result: ❌ Empty (enhancement not working)');
+              process.exit(1);
             }
           }
           
-          test().catch(console.error);
+          runTests().catch(e => {
+            console.error('Test error:', e.message);
+            process.exit(1);
+          });
           EOF
           
-          node test-direct.js
+          node test-enhancement.js
         shell: bash
       
-      # Create simplified composite actions
-      - name: Create Simple Test Composite Action
+      # Create and test composite action
+      - name: Create Test Composite Action
         run: |
-          mkdir -p .github/actions/simple-test
+          mkdir -p .github/actions/test-composite
           
-          cat > .github/actions/simple-test/requirements.txt << 'EOF'
+          # Create requirements file
+          cat > .github/actions/test-composite/requirements.txt << 'EOF'
           pytest==7.4.3
           black==23.11.0
+          mypy==1.7.1
           EOF
           
-          cat > .github/actions/simple-test/action.yml << 'EOF'
-          name: 'Simple Test'
-          description: 'Simple test of toolkit enhancement'
+          # Create composite action that uses absolute paths
+          cat > .github/actions/test-composite/action.yml << 'EOF'
+          name: 'Test Composite'
+          description: 'Test toolkit enhancement'
           outputs:
             hash:
               description: 'Generated hash'
-              value: ${{ steps.hash.outputs.hash }}
-            result:
-              description: 'Test result'
-              value: ${{ steps.hash.outputs.result }}
+              value: ${{ steps.generate-hash.outputs.hash }}
+            status:
+              description: 'Test status'
+              value: ${{ steps.generate-hash.outputs.status }}
           runs:
             using: 'composite'
             steps:
-              - name: Test Hash Generation
-                id: hash
+              - name: Show Environment
                 shell: bash
                 run: |
-                  echo "Testing hash generation..."
-                  echo "Action path: ${{ github.action_path }}"
-                  echo "Workspace: ${{ github.workspace }}"
+                  echo "Current directory: $(pwd)"
+                  echo "GitHub Workspace: ${{ github.workspace }}"
+                  echo "GitHub Action Path: ${{ github.action_path }}"
+                  echo "Composite action files:"
+                  ls -la ${{ github.action_path }} || echo "Action path not accessible"
                   
-                  # Find the glob module
-                  GLOB_PATH="${{ inputs.toolkit-path }}/packages/glob"
-                  if [ -f "$GLOB_PATH/lib/glob.js" ]; then
-                    GLOB_MODULE="$GLOB_PATH/lib/glob"
-                  elif [ -f "$GLOB_PATH/dist/glob.js" ]; then
-                    GLOB_MODULE="$GLOB_PATH/dist/glob"
-                  elif [ -f "$GLOB_PATH/index.js" ]; then
-                    GLOB_MODULE="$GLOB_PATH"
-                  else
-                    echo "❌ Could not find glob module"
-                    echo "result=failed" >> $GITHUB_OUTPUT
+              - name: Generate Hash
+                id: generate-hash
+                shell: bash
+                run: |
+                  # Use the toolkit path from input
+                  TOOLKIT_PATH="${{ github.workspace }}/toolkit"
+                  ACTION_PATH="${{ github.action_path }}"
+                  
+                  # If action path is empty, use relative path
+                  if [ -z "$ACTION_PATH" ]; then
+                    ACTION_PATH="${{ github.workspace }}/.github/actions/test-composite"
+                  fi
+                  
+                  echo "Toolkit path: $TOOLKIT_PATH"
+                  echo "Action path: $ACTION_PATH"
+                  echo "Requirements file: $ACTION_PATH/requirements.txt"
+                  
+                  # Check if files exist
+                  if [ ! -f "$ACTION_PATH/requirements.txt" ]; then
+                    echo "❌ requirements.txt not found at $ACTION_PATH"
+                    echo "status=failed" >> $GITHUB_OUTPUT
                     exit 1
                   fi
                   
-                  # Test hash generation
-                  RESULT=$(node -e "
-                    const glob = require('$GLOB_MODULE');
+                  # Run the hash test
+                  cd "${{ github.workspace }}"
+                  
+                  HASH_RESULT=$(node -e "
+                    const path = require('path');
+                    const glob = require('${TOOLKIT_PATH}/packages/glob');
+                    
                     (async () => {
                       try {
                         const hash = await glob.hashFiles('requirements.txt', '', {
-                          workingDirectory: '${{ github.action_path }}'
+                          workingDirectory: '${ACTION_PATH}'
                         });
+                        
                         if (hash) {
                           console.log(hash);
-                          process.exit(0);
                         } else {
-                          console.log('EMPTY');
+                          console.error('EMPTY');
                           process.exit(1);
                         }
-                      } catch(e) {
+                      } catch (e) {
                         console.error('ERROR:', e.message);
                         process.exit(1);
                       }
                     })();
-                  " 2>&1) || true
+                  " 2>&1) || echo "FAILED"
                   
-                  echo "Result: $RESULT"
-                  
-                  if [[ "$RESULT" == ERROR* ]] || [[ "$RESULT" == "EMPTY" ]]; then
-                    echo "❌ Failed to generate hash"
+                  if [[ "$HASH_RESULT" == "FAILED" ]] || [[ "$HASH_RESULT" == "EMPTY" ]] || [[ "$HASH_RESULT" == ERROR* ]]; then
+                    echo "❌ Failed to generate hash: $HASH_RESULT"
                     echo "hash=" >> $GITHUB_OUTPUT
-                    echo "result=failed" >> $GITHUB_OUTPUT
+                    echo "status=failed" >> $GITHUB_OUTPUT
                   else
-                    echo "✅ Hash generated: ${RESULT:0:16}..."
-                    echo "hash=$RESULT" >> $GITHUB_OUTPUT
-                    echo "result=success" >> $GITHUB_OUTPUT
+                    echo "✅ Hash generated: ${HASH_RESULT:0:16}..."
+                    echo "hash=$HASH_RESULT" >> $GITHUB_OUTPUT
+                    echo "status=success" >> $GITHUB_OUTPUT
                   fi
-          inputs:
-            toolkit-path:
-              description: 'Path to toolkit'
-              required: true
           EOF
         shell: bash
       
-      - name: Run Simple Test
-        id: simple-test
-        uses: ./.github/actions/simple-test
-        with:
-          toolkit-path: ${{ steps.toolkit.outputs.toolkit-path }}
+      - name: Run Composite Action Test
+        id: composite-test
+        uses: ./.github/actions/test-composite
       
       - name: Validate Results
         run: |
-          echo "📊 Test Results"
+          echo "📊 Final Results"
           echo "==============="
-          echo "Hash: ${{ steps.simple-test.outputs.hash }}"
-          echo "Result: ${{ steps.simple-test.outputs.result }}"
+          echo "Hash: ${{ steps.composite-test.outputs.hash }}"
+          echo "Status: ${{ steps.composite-test.outputs.status }}"
+          echo ""
           
-          if [ "${{ steps.simple-test.outputs.result }}" == "success" ]; then
-            echo "✅ SUCCESS! Toolkit enhancement is working!"
+          if [ "${{ steps.composite-test.outputs.status }}" == "success" ]; then
+            echo "✅ SUCCESS! Composite action can now cache dependencies!"
+            echo "The toolkit enhancement is working correctly."
           else
-            echo "❌ FAILED! Enhancement not working"
+            echo "❌ FAILED! The enhancement is not working as expected."
             exit 1
           fi
         shell: bash
