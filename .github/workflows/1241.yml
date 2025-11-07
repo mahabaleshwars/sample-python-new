@@ -1,0 +1,121 @@
+name: Debug Python 3.14t Installation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug-freethreaded-installation:
+    name: Debug Freethreaded Python Structure
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@v4
+      
+      # First, let's see what the standard 3.14 looks like
+      - name: Install Standard Python 3.14 (for comparison)
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+          architecture: arm64
+          allow-prereleases: true
+      
+      - name: List Standard Python 3.14 Directory Structure
+        shell: powershell
+        run: |
+          Write-Host "=== Standard Python 3.14 Directory Structure ===" -ForegroundColor Green
+          if (Test-Path "C:\hostedtoolcache\windows\Python\3.14.0\arm64") {
+            Get-ChildItem -Path "C:\hostedtoolcache\windows\Python\3.14.0\arm64" -Recurse -File | 
+              Where-Object { $_.Extension -in '.exe', '.dll' -or $_.Name -like 'python*' } | 
+              Select-Object FullName, Length | 
+              Format-Table -AutoSize
+          }
+      
+      # Now let's manually download and inspect the freethreaded build
+      - name: Download Freethreaded Python Manually
+        shell: powershell
+        run: |
+          Write-Host "=== Downloading Freethreaded Python ===" -ForegroundColor Green
+          $url = "https://github.com/actions/python-versions/releases/download/3.14.0-18313368925/python-3.14.0-win32-arm64-freethreaded.zip"
+          $zipPath = "$env:TEMP\python-freethreaded.zip"
+          $extractPath = "$env:TEMP\python-freethreaded-extracted"
+          
+          Invoke-WebRequest -Uri $url -OutFile $zipPath
+          Write-Host "Downloaded to: $zipPath"
+          Write-Host "File size: $((Get-Item $zipPath).Length) bytes"
+          
+          # Extract it
+          Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+          Write-Host "Extracted to: $extractPath"
+      
+      - name: Inspect Freethreaded Archive Contents
+        shell: powershell
+        run: |
+          Write-Host "=== Freethreaded Archive Directory Structure ===" -ForegroundColor Yellow
+          $extractPath = "$env:TEMP\python-freethreaded-extracted"
+          
+          # Show top-level structure
+          Write-Host "`n--- Top Level Structure ---" -ForegroundColor Cyan
+          Get-ChildItem -Path $extractPath | Select-Object Mode, Name | Format-Table -AutoSize
+          
+          # Show all .exe files
+          Write-Host "`n--- All .exe Files ---" -ForegroundColor Cyan
+          Get-ChildItem -Path $extractPath -Recurse -Filter "*.exe" | 
+            Select-Object FullName, Length | Format-Table -AutoSize
+          
+          # Show all python* files
+          Write-Host "`n--- All python* Files ---" -ForegroundColor Cyan
+          Get-ChildItem -Path $extractPath -Recurse | 
+            Where-Object { $_.Name -like "python*" } | 
+            Select-Object FullName, Length | Format-Table -AutoSize
+          
+          # Show if there's a setup.ps1 or install script
+          Write-Host "`n--- Looking for setup/install scripts ---" -ForegroundColor Cyan
+          Get-ChildItem -Path $extractPath -Recurse -Filter "*.ps1" | 
+            Select-Object FullName | Format-Table -AutoSize
+      
+      - name: Compare with Standard Build Structure
+        shell: powershell
+        run: |
+          Write-Host "=== Comparing Structures ===" -ForegroundColor Magenta
+          
+          $standardPath = "C:\hostedtoolcache\windows\Python\3.14.0\arm64"
+          $freethreadedPath = "$env:TEMP\python-freethreaded-extracted"
+          
+          Write-Host "`n--- Standard Build Executables ---"
+          Get-ChildItem -Path $standardPath -Filter "*.exe" | Select-Object Name
+          
+          Write-Host "`n--- Freethreaded Build Executables ---"
+          Get-ChildItem -Path $freethreadedPath -Recurse -Filter "*.exe" | Select-Object Name
+      
+      # Now try the actual setup-python action with freethreaded
+      - name: Try Installing 3.14t (will likely fail, but we'll see where)
+        id: setup-freethreaded
+        continue-on-error: true
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14t'
+          architecture: arm64
+          allow-prereleases: true
+      
+      - name: Check What Got Installed (if anything)
+        if: always()
+        shell: powershell
+        run: |
+          Write-Host "=== Checking Installation Directory ===" -ForegroundColor Red
+          $ftPath = "C:\hostedtoolcache\windows\Python\3.14.0\arm64-freethreaded"
+          
+          if (Test-Path $ftPath) {
+            Write-Host "Directory exists: $ftPath"
+            Write-Host "`n--- Contents ---"
+            Get-ChildItem -Path $ftPath -Recurse | 
+              Select-Object FullName, Length | Format-Table -AutoSize
+          } else {
+            Write-Host "Directory does NOT exist: $ftPath" -ForegroundColor Red
+          }
+      
+      - name: Check Environment Variables
+        if: always()
+        shell: powershell
+        run: |
+          Write-Host "=== Python-Related Environment Variables ===" -ForegroundColor Green
+          Get-ChildItem Env: | Where-Object { $_.Name -like "*PYTHON*" -or $_.Name -eq "PATH" } | 
+            Format-Table Name, Value -AutoSize -Wrap
