@@ -6,7 +6,7 @@ on:
 jobs:
   test-single-version:
     name: Test 3.14t only
-    runs-on: windows-11-arm
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
@@ -35,7 +35,7 @@ jobs:
           python -c "import sys; print(f'Free-threading enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')"
   test-314-and-314t-together:
     name: Test 3.14 and 3.14t together (one step)
-    runs-on: windows-11-arm
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
@@ -74,7 +74,7 @@ jobs:
           done
   test-separated-jobs:
     name: Test 3.14 and 3.14t in separate jobs
-    runs-on: windows-11-arm
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ['3.14', '3.14t']
