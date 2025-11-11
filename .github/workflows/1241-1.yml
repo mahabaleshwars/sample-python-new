@@ -1,67 +1,54 @@
-name: Test Python 3.14t on Ubuntu
+name: Test Python 3.14t on Windows ARM64
 
 on:
   workflow_dispatch:
 
 jobs:
-  test-single-version:
-    name: Test 3.14t only
-    runs-on: ubuntu-latest
+  test-314-then-314t:
+    name: Setup 3.14 then 3.14t (reproduces issue)
+    runs-on: windows-11-arm
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Python 3.14t (free-threaded)
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.14t'
-          allow-prereleases: true
-      
-      - name: Verify Python installation
-        shell: bash
-        run: |
-          echo "Python version:"
-          python --version
-          echo ""
-          echo "Python executable location:"
-          which python
-          echo ""
-          echo "Python sys info:"
-          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys.version}')"
-      
-      - name: Test free-threading is enabled
-        shell: bash
-        run: |
-          python -c "import sys; print(f'Free-threading enabled: {not sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')"
-
-  test-314-and-314t-together:
-    name: Test 3.14 and 3.14t together
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Python 3.14 (standard)
+      - name: Setup Python 3.14
         uses: actions/setup-python@v5
         with:
           python-version: '3.14'
+          architecture: arm64
           allow-prereleases: true
       
-      - name: Setup Python 3.14t (free-threaded)
+      - name: Verify 3.14 installation
+        shell: bash
+        run: |
+          echo "=== After installing 3.14 ==="
+          python --version
+          which python
+      
+      - name: Setup Python 3.14t (this should fail)
         uses: actions/setup-python@v5
         with:
           python-version: '3.14t'
+          architecture: arm64
           allow-prereleases: true
       
-      - name: Verify both Python installations
+      - name: Check what happened
         shell: bash
         run: |
-          echo "=== Python 3.14 ==="
-          python3.14 --version
-          python3.14 -c "import sys; print(f'GIL enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')"
-          echo ""
-          echo "=== Python 3.14t ==="
-          python3.14t --version
-          python3.14t -c "import sys; print(f'Free-threading enabled: {not sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')"
-          echo ""
-          echo "=== Default python ==="
+          echo "=== After attempting to install 3.14t ==="
           python --version
           which python
+
+  test-314t-alone:
+    name: Setup 3.14t alone (should work)
+    runs-on: windows-11-arm
+    steps:
+      - name: Setup Python 3.14t
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14t'
+          architecture: arm64
+          allow-prereleases: true
+      
+      - name: Verify installation
+        shell: bash
+        run: |
+          python --version
+          python -c "import sys; print(f'GIL enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')"
