@@ -115,7 +115,7 @@ jobs:
               }
               
               Write-Host "`n  Key files check:"
-              @("python.exe", "python3.exe", "python3.13.exe", "python3.13t.exe") | ForEach-Object {
+              @("python.exe", "python3.exe", "python3.14.exe", "python3.14t.exe") | ForEach-Object {
                 $filePath = Join-Path $_.Parent.FullName $_
                 $exists = Test-Path $filePath
                 $status = if ($exists) { "[✓ EXISTS]" } else { "[✗ MISSING]" }
@@ -142,7 +142,7 @@ jobs:
           Write-Host "`n=== FINAL STATE ===" -ForegroundColor Cyan
           
           Write-Host "`n--- Available Python commands ---"
-          @("python", "python3", "python3.13", "python3.13t") | ForEach-Object {
+          @("python", "python3", "python3.14", "python3.14t") | ForEach-Object {
             Write-Host "`nTrying: $_"
             try {
               $cmd = Get-Command $_ -ErrorAction SilentlyContinue
@@ -215,9 +215,9 @@ jobs:
           Write-Host "1. What executables are created in 3.14t-only installation"
           Write-Host "2. What files the setup script expects when installing sequentially"
           Write-Host "3. The exact line in setup.ps1 that's failing"
-          Write-Host "4. Whether python3.13t.exe exists or if it's named differently"
+          Write-Host "4. Whether python3.14t.exe exists or if it's named differently"
           Write-Host ""
           Write-Host "Key questions to answer:"
-          Write-Host "- Does python3.13t.exe get created in the free-threaded build?"
+          Write-Host "- Does python3.14t.exe get created in the free-threaded build?"
           Write-Host "- Or does it only create python.exe (which runs in free-threaded mode)?"
           Write-Host "- What does the setup.ps1 script expect vs what actually exists?"
