@@ -1,4 +1,4 @@
-name: Test Python 3.13.8t on Windows ARM64
+name: Test Python 3.13.8t on Windows x64
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13.8'
-          architecture: arm64
+          architecture: x64
           allow-prereleases: true
       
       - name: Verify 3.13.8 installation
@@ -26,7 +26,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13.8t'
-          architecture: arm64
+          architecture: x64
           allow-prereleases: true
       
       - name: Check what happened
@@ -44,7 +44,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13.8t'
-          architecture: arm64
+          architecture: x64
           allow-prereleases: true
       
       - name: Verify installation
