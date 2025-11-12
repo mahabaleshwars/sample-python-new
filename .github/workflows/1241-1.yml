@@ -8,24 +8,24 @@ jobs:
     name: Setup 3.14 then 3.14t (reproduces issue)
     runs-on: windows-11-arm
     steps:
-      - name: Setup Python 3.14
+      - name: Setup Python 3.13
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.13'
           architecture: arm64
           allow-prereleases: true
       
-      - name: Verify 3.14 installation
+      - name: Verify 3.13 installation
         shell: bash
         run: |
-          echo "=== After installing 3.14 ==="
+          echo "=== After installing 3.13 ==="
           python --version
           which python
       
-      - name: Setup Python 3.14t (this should fail)
+      - name: Setup Python 3.13t (this should fail)
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14t'
+          python-version: '3.13t'
           architecture: arm64
           allow-prereleases: true
       
@@ -37,13 +37,13 @@ jobs:
           which python
 
   test-314t-alone:
-    name: Setup 3.14t alone (should work)
+    name: Setup 3.13t alone (should work)
     runs-on: windows-11-arm
     steps:
-      - name: Setup Python 3.14t
+      - name: Setup Python 3.13t
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14t'
+          python-version: '3.13t'
           architecture: arm64
           allow-prereleases: true
       
