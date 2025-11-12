@@ -1,167 +1,168 @@
-name: Deep Diagnostic - Python 3.14t on Windows ARM64
+name: Enhanced Diagnostic - Python 3.14t on Windows ARM64
 
 on:
   workflow_dispatch:
 
 jobs:
-  deep-diagnostic-sequential:
-    name: Deep Diagnostic - Sequential Installation
+  deep-diagnostic:
+    name: Deep Diagnostic - Enhanced
     runs-on: windows-11-arm
     steps:
-      - name: "[STEP 1] Pre-installation - Check initial state"
-        shell: pwsh
-        run: |
-          Write-Host "=== INITIAL STATE CHECK ===" -ForegroundColor Cyan
-          $basePath = "C:\hostedtoolcache\windows\Python"
-          if (Test-Path $basePath) {
-            Write-Host "Python toolcache exists"
-            Get-ChildItem $basePath -Recurse -Depth 2 | Select-Object FullName, Length, Mode
-          } else {
-            Write-Host "Python toolcache does not exist yet"
-          }
-      
-      - name: "[STEP 2] Install Python 3.14 (standard)"
+      - name: "[STEP 1] Install Python 3.14 (standard)"
         uses: actions/setup-python@v5
         with:
           python-version: '3.14'
           architecture: arm64
           allow-prereleases: true
       
-      - name: "[STEP 3] Post 3.14 installation - Deep inspection"
+      - name: "[STEP 2] Detailed inspection after 3.14 installation"
         shell: pwsh
         run: |
-          Write-Host "`n=== AFTER 3.14 INSTALLATION ===" -ForegroundColor Cyan
+          Write-Host "=== AFTER 3.14 INSTALLATION ===" -ForegroundColor Cyan
           
-          $basePath = "C:\hostedtoolcache\windows\Python\3.14"
-          Write-Host "`nSearching for Python 3.14 installations..."
+          $basePath = "C:\hostedtoolcache\windows\Python\3.14.0"
           
           if (Test-Path $basePath) {
-            Write-Host "Found base path: $basePath"
-            
-            Write-Host "`n--- Architecture folders ---"
+            Write-Host "`n--- All subdirectories ---"
             Get-ChildItem $basePath -Directory | ForEach-Object {
-              Write-Host "  $($_.Name)" -ForegroundColor Yellow
-            }
-            
-            Write-Host "`n--- Executables in each architecture ---"
-            Get-ChildItem $basePath -Directory | ForEach-Object {
-              $archPath = $_.FullName
-              Write-Host "`nIn $($_.Name):" -ForegroundColor Yellow
-              Get-ChildItem $archPath -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
-                $fileInfo = Get-Item $_.FullName
-                $isSymlink = $fileInfo.Attributes -match "ReparsePoint"
-                $symlinkIndicator = if ($isSymlink) { " [SYMLINK]" } else { " [$($_.Length) bytes]" }
-                Write-Host "    $($_.Name)$symlinkIndicator"
+              Write-Host "`nDirectory: $($_.Name)" -ForegroundColor Yellow
+              
+              Write-Host "  All .exe files:"
+              Get-ChildItem $_.FullName -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
+                $fullPath = $_.FullName
+                $fileInfo = Get-Item $fullPath
+                $isSymlink = $fileInfo.Attributes -band [System.IO.FileAttributes]::ReparsePoint
                 
                 if ($isSymlink) {
-                  $target = $fileInfo.Target
-                  Write-Host "      -> Target: $target" -ForegroundColor Gray
+                  Write-Host "    [SYMLINK] $($_.Name)"
+                  # Get symlink target
+                  $target = (Get-Item $fullPath).Target
+                  if ($target) {
+                    Write-Host "      -> $target" -ForegroundColor Gray
+                  }
+                } else {
+                  Write-Host "    [FILE] $($_.Name) ($($_.Length) bytes)"
                 }
               }
             }
           }
-          
-          Write-Host "`n--- PATH environment ---"
-          $env:PATH -split ';' | Where-Object { $_ -like "*Python*" } | ForEach-Object {
-            Write-Host "  $_" -ForegroundColor Green
-          }
-          
-          Write-Host "`n--- Active Python ---"
-          python --version
-          Write-Host "Located at: $(Get-Command python).Source"
       
-      - name: "[STEP 4] Before 3.14t - Capture setup-python action internals"
-        shell: pwsh
-        run: |
-          Write-Host "`n=== BEFORE 3.14t INSTALLATION ===" -ForegroundColor Cyan
-          Write-Host "This is what should exist for 3.14t to install successfully..."
-          
-          $expectedPath = "C:\hostedtoolcache\windows\Python\3.14\arm64-freethreaded"
-          Write-Host "`nExpected target path: $expectedPath"
-          Write-Host "Does it exist? $(Test-Path $expectedPath)"
-      
-      - name: "[STEP 5] Install Python 3.14t (free-threaded)"
+      - name: "[STEP 3] Install Python 3.14t (will fail)"
         uses: actions/setup-python@v5
         continue-on-error: true
-        id: install_freethreaded
+        id: install_14t
         with:
           python-version: '3.14t'
           architecture: arm64
           allow-prereleases: true
       
-      - name: "[STEP 6] Post 3.14t attempt - Deep inspection"
+      - name: "[STEP 4] Capture and display setup.ps1 content"
         shell: pwsh
         run: |
-          Write-Host "`n=== AFTER 3.14t INSTALLATION ATTEMPT ===" -ForegroundColor Cyan
-          Write-Host "Installation outcome: ${{ steps.install_freethreaded.outcome }}"
+          Write-Host "=== SETUP.PS1 SCRIPT ANALYSIS ===" -ForegroundColor Cyan
           
-          $basePath = "C:\hostedtoolcache\windows\Python\3.14"
+          $tempPath = "C:\a\_temp"
+          $setupScripts = Get-ChildItem $tempPath -Filter "*.ps1" -ErrorAction SilentlyContinue
           
+          if ($setupScripts.Count -gt 0) {
+            # Get the most recent script (likely the one that just ran)
+            $latestScript = $setupScripts | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            
+            Write-Host "`nFound setup script: $($latestScript.Name)" -ForegroundColor Yellow
+            Write-Host "Last modified: $($latestScript.LastWriteTime)"
+            Write-Host "`n--- FULL SCRIPT CONTENT (lines 120-150) ---" -ForegroundColor Green
+            
+            $content = Get-Content $latestScript.FullName
+            for ($i = 119; $i -lt 150 -and $i -lt $content.Length; $i++) {
+              $lineNum = $i + 1
+              Write-Host "$lineNum : $($content[$i])"
+            }
+            
+            Write-Host "`n--- Searching for key patterns ---"
+            $content | Select-String -Pattern "Remove-Item.*python\.exe|New-Item.*python.*\.exe|arm64-freethreaded" | ForEach-Object {
+              Write-Host "Line $($_.LineNumber): $($_.Line)"
+            }
+          } else {
+            Write-Host "No setup scripts found in temp directory"
+          }
+      
+      - name: "[STEP 5] Check what actually happened"
+        shell: pwsh
+        run: |
+          Write-Host "=== POST-FAILURE ANALYSIS ===" -ForegroundColor Cyan
+          Write-Host "Installation outcome: ${{ steps.install_14t.outcome }}"
+          
+          $basePath = "C:\hostedtoolcache\windows\Python\3.14.0"
+          
+          Write-Host "`n--- Checking ALL directories under 3.14.0 ---"
           if (Test-Path $basePath) {
-            Write-Host "`n--- All architecture folders ---"
             Get-ChildItem $basePath -Directory | ForEach-Object {
-              Write-Host "`n$($_.Name):" -ForegroundColor Yellow
+              $dirName = $_.Name
+              Write-Host "`n[$dirName]" -ForegroundColor Yellow
               
-              Write-Host "  Executables:"
-              Get-ChildItem $_.FullName -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
-                $fileInfo = Get-Item $_.FullName
-                $isSymlink = $fileInfo.Attributes -match "ReparsePoint"
-                $size = if ($isSymlink) { "[SYMLINK]" } else { "[FILE: $($_.Length) bytes]" }
-                Write-Host "    - $($_.Name) $size"
-                
-                if ($isSymlink) {
-                  Write-Host "      Target: $($fileInfo.Target)" -ForegroundColor Gray
+              $exeFiles = Get-ChildItem $_.FullName -Filter "*.exe" -ErrorAction SilentlyContinue
+              
+              if ($exeFiles.Count -eq 0) {
+                Write-Host "  No .exe files found"
+              } else {
+                $exeFiles | ForEach-Object {
+                  $fileInfo = Get-Item $_.FullName
+                  $isSymlink = $fileInfo.Attributes -band [System.IO.FileAttributes]::ReparsePoint
+                  
+                  if ($isSymlink) {
+                    $target = $fileInfo.Target
+                    Write-Host "  [SYMLINK] $($_.Name) -> $target"
+                  } else {
+                    Write-Host "  [FILE] $($_.Name) (Size: $($_.Length))"
+                  }
                 }
               }
-              
-              Write-Host "`n  Key files check:"
-              @("python.exe", "python3.exe", "python3.14.exe", "python3.14t.exe") | ForEach-Object {
-                $filePath = Join-Path $_.Parent.FullName $_
-                $exists = Test-Path $filePath
-                $status = if ($exists) { "[✓ EXISTS]" } else { "[✗ MISSING]" }
-                Write-Host "    $_ $status"
-              }
             }
           }
           
-          Write-Host "`n--- Checking for downloaded artifacts ---"
-          $tempPath = "C:\a\_temp"
-          if (Test-Path $tempPath) {
-            Get-ChildItem $tempPath -Filter "*.ps1" -ErrorAction SilentlyContinue | ForEach-Object {
-              Write-Host "`nFound setup script: $($_.Name)"
-              Write-Host "Content around line 131-140:"
-              Get-Content $_.FullName -TotalCount 150 | Select-Object -Skip 125 | ForEach-Object {
-                Write-Host "  $_" -ForegroundColor DarkGray
-              }
-            }
+          Write-Host "`n--- Checking for arm64-freethreaded directory ---"
+          $ftPath = "$basePath\arm64-freethreaded"
+          if (Test-Path $ftPath) {
+            Write-Host "✓ arm64-freethreaded directory EXISTS" -ForegroundColor Green
+            Write-Host "Contents:"
+            Get-ChildItem $ftPath -Recurse -Depth 1 | Select-Object FullName, Length, Mode | Format-Table -AutoSize
+          } else {
+            Write-Host "✗ arm64-freethreaded directory DOES NOT EXIST" -ForegroundColor Red
           }
-
-      - name: "[STEP 7] Final environment check"
+      
+      - name: "[STEP 6] Check Python commands availability"
         shell: pwsh
         run: |
-          Write-Host "`n=== FINAL STATE ===" -ForegroundColor Cyan
+          Write-Host "=== PYTHON COMMANDS CHECK ===" -ForegroundColor Cyan
           
-          Write-Host "`n--- Available Python commands ---"
-          @("python", "python3", "python3.14", "python3.14t") | ForEach-Object {
-            Write-Host "`nTrying: $_"
-            try {
-              $cmd = Get-Command $_ -ErrorAction SilentlyContinue
-              if ($cmd) {
-                Write-Host "  Found: $($cmd.Source)" -ForegroundColor Green
-                & $_ --version
-              } else {
-                Write-Host "  Not found" -ForegroundColor Red
+          @("python.exe", "python3.exe", "python3.14.exe", "python3.14t.exe") | ForEach-Object {
+            Write-Host "`nSearching for: $_"
+            
+            # Search in all Python 3.14 directories
+            $found = Get-ChildItem "C:\hostedtoolcache\windows\Python\3.14.0" -Recurse -Filter $_ -ErrorAction SilentlyContinue
+            
+            if ($found) {
+              $found | ForEach-Object {
+                Write-Host "  ✓ Found: $($_.FullName)" -ForegroundColor Green
+                
+                # Try to run it
+                try {
+                  $version = & $_.FullName --version 2>&1
+                  Write-Host "    Version: $version" -ForegroundColor Gray
+                } catch {
+                  Write-Host "    Error running: $_" -ForegroundColor Red
+                }
               }
-            } catch {
-              Write-Host "  Error: $_" -ForegroundColor Red
+            } else {
+              Write-Host "  ✗ Not found" -ForegroundColor Red
             }
           }
 
-  deep-diagnostic-freethreaded-only:
-    name: Deep Diagnostic - Free-threaded Only
+  control-test-314t-alone:
+    name: Control - 3.14t Installation Alone
     runs-on: windows-11-arm
     steps:
-      - name: "[CONTROL] Install 3.14t alone"
+      - name: "[CONTROL] Install 3.14t only"
         uses: actions/setup-python@v5
         with:
           python-version: '3.14t'
@@ -173,51 +174,23 @@ jobs:
         run: |
           Write-Host "=== SUCCESSFUL 3.14t INSTALLATION ===" -ForegroundColor Green
           
-          $basePath = "C:\hostedtoolcache\windows\Python\3.14"
+          $basePath = "C:\hostedtoolcache\windows\Python\3.14.0"
           
-          Write-Host "`n--- Directory structure ---"
-          Get-ChildItem $basePath -Recurse -Depth 1 | Select-Object FullName, Mode, Length
-          
-          Write-Host "`n--- Executables created ---"
-          Get-ChildItem "$basePath\arm64-freethreaded" -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
-            $fileInfo = Get-Item $_.FullName
-            $isSymlink = $fileInfo.Attributes -match "ReparsePoint"
-            
-            Write-Host "`n$($_.Name):"
-            Write-Host "  Type: $(if ($isSymlink) { 'Symbolic Link' } else { 'Regular File' })"
-            Write-Host "  Size: $($_.Length) bytes"
-            
-            if ($isSymlink) {
-              Write-Host "  Target: $($fileInfo.Target)"
+          Write-Host "`n--- What gets created when 3.14t installs successfully ---"
+          Get-ChildItem $basePath -Directory | ForEach-Object {
+            Write-Host "`nDirectory: $($_.Name)" -ForegroundColor Yellow
+            Get-ChildItem $_.FullName -Filter "*.exe" | ForEach-Object {
+              $fileInfo = Get-Item $_.FullName
+              $isSymlink = $fileInfo.Attributes -band [System.IO.FileAttributes]::ReparsePoint
+              
+              if ($isSymlink) {
+                Write-Host "  [SYMLINK] $($_.Name) -> $($fileInfo.Target)"
+              } else {
+                Write-Host "  [FILE] $($_.Name) ($($_.Length) bytes)"
+              }
             }
           }
           
-          Write-Host "`n--- Python verification ---"
+          Write-Host "`n--- Verification ---"
           python --version
-          python -c "import sys; print(f'Free-threading: {not sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')"
-          python -c "import sys; print(f'Executable: {sys.executable}')"
-          
-          Write-Host "`n--- CRITICAL: What files should exist for symlink creation? ---"
-          Write-Host "This shows what the setup script expects to find..."
-
-  compare-installations:
-    name: Compare Installation Artifacts
-    runs-on: windows-11-arm
-    needs: [deep-diagnostic-sequential, deep-diagnostic-freethreaded-only]
-    if: always()
-    steps:
-      - name: Summary
-        shell: pwsh
-        run: |
-          Write-Host "=== INVESTIGATION SUMMARY ===" -ForegroundColor Magenta
-          Write-Host ""
-          Write-Host "Check the logs above to identify:"
-          Write-Host "1. What executables are created in 3.14t-only installation"
-          Write-Host "2. What files the setup script expects when installing sequentially"
-          Write-Host "3. The exact line in setup.ps1 that's failing"
-          Write-Host "4. Whether python3.14t.exe exists or if it's named differently"
-          Write-Host ""
-          Write-Host "Key questions to answer:"
-          Write-Host "- Does python3.14t.exe get created in the free-threaded build?"
-          Write-Host "- Or does it only create python.exe (which runs in free-threaded mode)?"
-          Write-Host "- What does the setup.ps1 script expect vs what actually exists?"
+          python -c "import sys; print(f'GIL disabled (free-threaded): {not sys._is_gil_enabled()}')"
