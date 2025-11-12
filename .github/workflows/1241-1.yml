@@ -1,31 +1,31 @@
-name: Test Python 3.14t on Windows ARM64
+name: Test Python 3.12t on Windows ARM64
 
 on:
   workflow_dispatch:
 
 jobs:
   test-314-then-314t:
-    name: Setup 3.14 then 3.14t (reproduces issue)
+    name: Setup 3.12 then 3.12t (reproduces issue)
     runs-on: windows-11-arm
     steps:
-      - name: Setup Python 3.13
+      - name: Setup Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.12'
           architecture: arm64
           allow-prereleases: true
       
-      - name: Verify 3.13 installation
+      - name: Verify 3.12 installation
         shell: bash
         run: |
-          echo "=== After installing 3.13 ==="
+          echo "=== After installing 3.12 ==="
           python --version
           which python
       
-      - name: Setup Python 3.13t (this should fail)
+      - name: Setup Python 3.12t (this should fail)
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13t'
+          python-version: '3.12t'
           architecture: arm64
           allow-prereleases: true
       
@@ -37,13 +37,13 @@ jobs:
           which python
 
   test-314t-alone:
-    name: Setup 3.13t alone (should work)
+    name: Setup 3.12t alone (should work)
     runs-on: windows-11-arm
     steps:
-      - name: Setup Python 3.13t
+      - name: Setup Python 3.12t
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13t'
+          python-version: '3.12t'
           architecture: arm64
           allow-prereleases: true
       
