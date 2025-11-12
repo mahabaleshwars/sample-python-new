@@ -1,54 +1,223 @@
-name: Test Python 3.13.8t on Windows x64
+name: Deep Diagnostic - Python 3.14t on Windows ARM64
 
 on:
   workflow_dispatch:
 
 jobs:
-  test-314-then-314t:
-    name: Setup 3.13.8 then 3.13.8t (reproduces issue)
+  deep-diagnostic-sequential:
+    name: Deep Diagnostic - Sequential Installation
     runs-on: windows-11-arm
     steps:
-      - name: Setup Python 3.13.8
+      - name: "[STEP 1] Pre-installation - Check initial state"
+        shell: pwsh
+        run: |
+          Write-Host "=== INITIAL STATE CHECK ===" -ForegroundColor Cyan
+          $basePath = "C:\hostedtoolcache\windows\Python"
+          if (Test-Path $basePath) {
+            Write-Host "Python toolcache exists"
+            Get-ChildItem $basePath -Recurse -Depth 2 | Select-Object FullName, Length, Mode
+          } else {
+            Write-Host "Python toolcache does not exist yet"
+          }
+      
+      - name: "[STEP 2] Install Python 3.14 (standard)"
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13.8'
-          architecture: x64
+          python-version: '3.14'
+          architecture: arm64
           allow-prereleases: true
       
-      - name: Verify 3.13.8 installation
-        shell: bash
+      - name: "[STEP 3] Post 3.14 installation - Deep inspection"
+        shell: pwsh
         run: |
-          echo "=== After installing 3.13.8 ==="
+          Write-Host "`n=== AFTER 3.14 INSTALLATION ===" -ForegroundColor Cyan
+          
+          $basePath = "C:\hostedtoolcache\windows\Python\3.14"
+          Write-Host "`nSearching for Python 3.14 installations..."
+          
+          if (Test-Path $basePath) {
+            Write-Host "Found base path: $basePath"
+            
+            Write-Host "`n--- Architecture folders ---"
+            Get-ChildItem $basePath -Directory | ForEach-Object {
+              Write-Host "  $($_.Name)" -ForegroundColor Yellow
+            }
+            
+            Write-Host "`n--- Executables in each architecture ---"
+            Get-ChildItem $basePath -Directory | ForEach-Object {
+              $archPath = $_.FullName
+              Write-Host "`nIn $($_.Name):" -ForegroundColor Yellow
+              Get-ChildItem $archPath -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
+                $fileInfo = Get-Item $_.FullName
+                $isSymlink = $fileInfo.Attributes -match "ReparsePoint"
+                $symlinkIndicator = if ($isSymlink) { " [SYMLINK]" } else { " [$($_.Length) bytes]" }
+                Write-Host "    $($_.Name)$symlinkIndicator"
+                
+                if ($isSymlink) {
+                  $target = $fileInfo.Target
+                  Write-Host "      -> Target: $target" -ForegroundColor Gray
+                }
+              }
+            }
+          }
+          
+          Write-Host "`n--- PATH environment ---"
+          $env:PATH -split ';' | Where-Object { $_ -like "*Python*" } | ForEach-Object {
+            Write-Host "  $_" -ForegroundColor Green
+          }
+          
+          Write-Host "`n--- Active Python ---"
           python --version
-          which python
+          Write-Host "Located at: $(Get-Command python).Source"
       
-      - name: Setup Python 3.13.8t (this should fail)
+      - name: "[STEP 4] Before 3.14t - Capture setup-python action internals"
+        shell: pwsh
+        run: |
+          Write-Host "`n=== BEFORE 3.14t INSTALLATION ===" -ForegroundColor Cyan
+          Write-Host "This is what should exist for 3.14t to install successfully..."
+          
+          $expectedPath = "C:\hostedtoolcache\windows\Python\3.14\arm64-freethreaded"
+          Write-Host "`nExpected target path: $expectedPath"
+          Write-Host "Does it exist? $(Test-Path $expectedPath)"
+      
+      - name: "[STEP 5] Install Python 3.14t (free-threaded)"
         uses: actions/setup-python@v5
+        continue-on-error: true
+        id: install_freethreaded
         with:
-          python-version: '3.13.8t'
-          architecture: x64
+          python-version: '3.14t'
+          architecture: arm64
           allow-prereleases: true
       
-      - name: Check what happened
-        shell: bash
+      - name: "[STEP 6] Post 3.14t attempt - Deep inspection"
+        shell: pwsh
         run: |
-          echo "=== After attempting to install 3.14t ==="
-          python --version
-          which python
+          Write-Host "`n=== AFTER 3.14t INSTALLATION ATTEMPT ===" -ForegroundColor Cyan
+          Write-Host "Installation outcome: ${{ steps.install_freethreaded.outcome }}"
+          
+          $basePath = "C:\hostedtoolcache\windows\Python\3.14"
+          
+          if (Test-Path $basePath) {
+            Write-Host "`n--- All architecture folders ---"
+            Get-ChildItem $basePath -Directory | ForEach-Object {
+              Write-Host "`n$($_.Name):" -ForegroundColor Yellow
+              
+              Write-Host "  Executables:"
+              Get-ChildItem $_.FullName -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
+                $fileInfo = Get-Item $_.FullName
+                $isSymlink = $fileInfo.Attributes -match "ReparsePoint"
+                $size = if ($isSymlink) { "[SYMLINK]" } else { "[FILE: $($_.Length) bytes]" }
+                Write-Host "    - $($_.Name) $size"
+                
+                if ($isSymlink) {
+                  Write-Host "      Target: $($fileInfo.Target)" -ForegroundColor Gray
+                }
+              }
+              
+              Write-Host "`n  Key files check:"
+              @("python.exe", "python3.exe", "python3.13.exe", "python3.13t.exe") | ForEach-Object {
+                $filePath = Join-Path $_.Parent.FullName $_
+                $exists = Test-Path $filePath
+                $status = if ($exists) { "[✓ EXISTS]" } else { "[✗ MISSING]" }
+                Write-Host "    $_ $status"
+              }
+            }
+          }
+          
+          Write-Host "`n--- Checking for downloaded artifacts ---"
+          $tempPath = "C:\a\_temp"
+          if (Test-Path $tempPath) {
+            Get-ChildItem $tempPath -Filter "*.ps1" -ErrorAction SilentlyContinue | ForEach-Object {
+              Write-Host "`nFound setup script: $($_.Name)"
+              Write-Host "Content around line 131-140:"
+              Get-Content $_.FullName -TotalCount 150 | Select-Object -Skip 125 | ForEach-Object {
+                Write-Host "  $_" -ForegroundColor DarkGray
+              }
+            }
+          }
 
-  test-314t-alone:
-    name: Setup 3.13.8t alone (should work)
+      - name: "[STEP 7] Final environment check"
+        shell: pwsh
+        run: |
+          Write-Host "`n=== FINAL STATE ===" -ForegroundColor Cyan
+          
+          Write-Host "`n--- Available Python commands ---"
+          @("python", "python3", "python3.13", "python3.13t") | ForEach-Object {
+            Write-Host "`nTrying: $_"
+            try {
+              $cmd = Get-Command $_ -ErrorAction SilentlyContinue
+              if ($cmd) {
+                Write-Host "  Found: $($cmd.Source)" -ForegroundColor Green
+                & $_ --version
+              } else {
+                Write-Host "  Not found" -ForegroundColor Red
+              }
+            } catch {
+              Write-Host "  Error: $_" -ForegroundColor Red
+            }
+          }
+
+  deep-diagnostic-freethreaded-only:
+    name: Deep Diagnostic - Free-threaded Only
     runs-on: windows-11-arm
     steps:
-      - name: Setup Python 3.13.8t
+      - name: "[CONTROL] Install 3.14t alone"
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13.8t'
-          architecture: x64
+          python-version: '3.14t'
+          architecture: arm64
           allow-prereleases: true
       
-      - name: Verify installation
-        shell: bash
+      - name: "[CONTROL] Inspect successful installation"
+        shell: pwsh
         run: |
+          Write-Host "=== SUCCESSFUL 3.14t INSTALLATION ===" -ForegroundColor Green
+          
+          $basePath = "C:\hostedtoolcache\windows\Python\3.14"
+          
+          Write-Host "`n--- Directory structure ---"
+          Get-ChildItem $basePath -Recurse -Depth 1 | Select-Object FullName, Mode, Length
+          
+          Write-Host "`n--- Executables created ---"
+          Get-ChildItem "$basePath\arm64-freethreaded" -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
+            $fileInfo = Get-Item $_.FullName
+            $isSymlink = $fileInfo.Attributes -match "ReparsePoint"
+            
+            Write-Host "`n$($_.Name):"
+            Write-Host "  Type: $(if ($isSymlink) { 'Symbolic Link' } else { 'Regular File' })"
+            Write-Host "  Size: $($_.Length) bytes"
+            
+            if ($isSymlink) {
+              Write-Host "  Target: $($fileInfo.Target)"
+            }
+          }
+          
+          Write-Host "`n--- Python verification ---"
           python --version
-          python -c "import sys; print(f'GIL enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')"
+          python -c "import sys; print(f'Free-threading: {not sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')"
+          python -c "import sys; print(f'Executable: {sys.executable}')"
+          
+          Write-Host "`n--- CRITICAL: What files should exist for symlink creation? ---"
+          Write-Host "This shows what the setup script expects to find..."
+
+  compare-installations:
+    name: Compare Installation Artifacts
+    runs-on: windows-11-arm
+    needs: [deep-diagnostic-sequential, deep-diagnostic-freethreaded-only]
+    if: always()
+    steps:
+      - name: Summary
+        shell: pwsh
+        run: |
+          Write-Host "=== INVESTIGATION SUMMARY ===" -ForegroundColor Magenta
+          Write-Host ""
+          Write-Host "Check the logs above to identify:"
+          Write-Host "1. What executables are created in 3.14t-only installation"
+          Write-Host "2. What files the setup script expects when installing sequentially"
+          Write-Host "3. The exact line in setup.ps1 that's failing"
+          Write-Host "4. Whether python3.13t.exe exists or if it's named differently"
+          Write-Host ""
+          Write-Host "Key questions to answer:"
+          Write-Host "- Does python3.13t.exe get created in the free-threaded build?"
+          Write-Host "- Or does it only create python.exe (which runs in free-threaded mode)?"
+          Write-Host "- What does the setup.ps1 script expect vs what actually exists?"
