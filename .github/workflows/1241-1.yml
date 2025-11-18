@@ -1,4 +1,4 @@
-name: Enhanced Diagnostic - Python 3.14t on Windows ARM64
+name: Enhanced Diagnostic - Python 3.13.6t on Windows ARM64
 
 on:
   workflow_dispatch:
@@ -8,19 +8,19 @@ jobs:
     name: Deep Diagnostic - Enhanced
     runs-on: windows-11-arm
     steps:
-      - name: "[STEP 1] Install Python 3.14 (standard)"
+      - name: "[STEP 1] Install Python 3.13.6 (standard)"
         uses: mahabaleshwars/setup-python@fix/win-arm64-freethreaded
         with:
-          python-version: '3.14'
+          python-version: '3.13.6'
           architecture: arm64
           allow-prereleases: true
       
-      - name: "[STEP 2] Detailed inspection after 3.14 installation"
+      - name: "[STEP 2] Detailed inspection after 3.13.6 installation"
         shell: pwsh
         run: |
-          Write-Host "=== AFTER 3.14 INSTALLATION ===" -ForegroundColor Cyan
+          Write-Host "=== AFTER 3.13.6 INSTALLATION ===" -ForegroundColor Cyan
           
-          $basePath = "C:\hostedtoolcache\windows\Python\3.14.0"
+          $basePath = "C:\hostedtoolcache\windows\Python\3.13.6.0"
           
           if (Test-Path $basePath) {
             Write-Host "`n--- All subdirectories ---"
@@ -47,12 +47,12 @@ jobs:
             }
           }
       
-      - name: "[STEP 3] Install Python 3.14t (will fail)"
+      - name: "[STEP 3] Install Python 3.13.6t (will fail)"
         uses: mahabaleshwars/setup-python@fix/win-arm64-freethreaded
         continue-on-error: true
         id: install_14t
         with:
-          python-version: '3.14t'
+          python-version: '3.13.6t'
           architecture: arm64
           allow-prereleases: true
       
@@ -92,9 +92,9 @@ jobs:
           Write-Host "=== POST-FAILURE ANALYSIS ===" -ForegroundColor Cyan
           Write-Host "Installation outcome: ${{ steps.install_14t.outcome }}"
           
-          $basePath = "C:\hostedtoolcache\windows\Python\3.14.0"
+          $basePath = "C:\hostedtoolcache\windows\Python\3.13.6.0"
           
-          Write-Host "`n--- Checking ALL directories under 3.14.0 ---"
+          Write-Host "`n--- Checking ALL directories under 3.13.6.0 ---"
           if (Test-Path $basePath) {
             Get-ChildItem $basePath -Directory | ForEach-Object {
               $dirName = $_.Name
@@ -135,11 +135,11 @@ jobs:
         run: |
           Write-Host "=== PYTHON COMMANDS CHECK ===" -ForegroundColor Cyan
           
-          @("python.exe", "python3.exe", "python3.14.exe", "python3.14t.exe") | ForEach-Object {
+          @("python.exe", "python3.exe", "python3.13.6.exe", "python3.13.6t.exe") | ForEach-Object {
             Write-Host "`nSearching for: $_"
             
-            # Search in all Python 3.14 directories
-            $found = Get-ChildItem "C:\hostedtoolcache\windows\Python\3.14.0" -Recurse -Filter $_ -ErrorAction SilentlyContinue
+            # Search in all Python 3.13.6 directories
+            $found = Get-ChildItem "C:\hostedtoolcache\windows\Python\3.13.6.0" -Recurse -Filter $_ -ErrorAction SilentlyContinue
             
             if ($found) {
               $found | ForEach-Object {
@@ -159,24 +159,24 @@ jobs:
           }
 
   control-test-314t-alone:
-    name: Control - 3.14t Installation Alone
+    name: Control - 3.13.6t Installation Alone
     runs-on: windows-11-arm
     steps:
-      - name: "[CONTROL] Install 3.14t only"
+      - name: "[CONTROL] Install 3.13.6t only"
         uses: mahabaleshwars/setup-python@fix/win-arm64-freethreaded
         with:
-          python-version: '3.14t'
+          python-version: '3.13.6t'
           architecture: arm64
           allow-prereleases: true
       
       - name: "[CONTROL] Inspect successful installation"
         shell: pwsh
         run: |
-          Write-Host "=== SUCCESSFUL 3.14t INSTALLATION ===" -ForegroundColor Green
+          Write-Host "=== SUCCESSFUL 3.13.6t INSTALLATION ===" -ForegroundColor Green
           
-          $basePath = "C:\hostedtoolcache\windows\Python\3.14.0"
+          $basePath = "C:\hostedtoolcache\windows\Python\3.13.6.0"
           
-          Write-Host "`n--- What gets created when 3.14t installs successfully ---"
+          Write-Host "`n--- What gets created when 3.13.6t installs successfully ---"
           Get-ChildItem $basePath -Directory | ForEach-Object {
             Write-Host "`nDirectory: $($_.Name)" -ForegroundColor Yellow
             Get-ChildItem $_.FullName -Filter "*.exe" | ForEach-Object {
