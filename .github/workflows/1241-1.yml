@@ -9,7 +9,7 @@ jobs:
     runs-on: windows-11-arm
     steps:
       - name: "[STEP 1] Install Python 3.14 (standard)"
-        uses: actions/setup-python@v5
+        uses: mahabaleshwars/setup-python@fix/win-arm64-freethreaded
         with:
           python-version: '3.14'
           architecture: arm64
@@ -48,7 +48,7 @@ jobs:
           }
       
       - name: "[STEP 3] Install Python 3.14t (will fail)"
-        uses: actions/setup-python@v5
+        uses: mahabaleshwars/setup-python@fix/win-arm64-freethreaded
         continue-on-error: true
         id: install_14t
         with:
@@ -163,7 +163,7 @@ jobs:
     runs-on: windows-11-arm
     steps:
       - name: "[CONTROL] Install 3.14t only"
-        uses: actions/setup-python@v5
+        uses: mahabaleshwars/setup-python@fix/win-arm64-freethreaded
         with:
           python-version: '3.14t'
           architecture: arm64
