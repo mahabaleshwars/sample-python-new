@@ -1,198 +1,183 @@
-name: Analyze Python 3.14 Installation (Focused Folders & Logs)
+name: Debug Python 3.14t Installation
 
 on:
   workflow_dispatch:
 
 jobs:
-  # ARM64: Individual installs (one version per job)
-  arm64-individual:
-    name: ARM64 Individual (3.14 or 3.14t)
+  debug-arm64:
+    name: Debug ARM64 Installation
     runs-on: windows-11-arm
-    strategy:
-      matrix:
-        python-version: ['3.14', '3.14t']  # Regular: 3.14 -> arm64 folder; Freethreaded: 3.14t -> arm64-freethreaded folder
     steps:
       - uses: actions/checkout@v4
-
-      - name: Pre-Install Check Existing Python 3.14 Folders
+      
+      - name: Pre-installation environment check
         shell: pwsh
         run: |
-          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-individual-${{ matrix.python-version }}] Pre-install: Checking Python 3.14 folders"
-          $toolCache = $env:AGENT_TOOLSDIRECTORY ?? $env:RUNNER_TOOL_CACHE
-          $pythonBase = Join-Path -Path $toolCache -ChildPath "Python\3.14.0"
-          if (Test-Path $pythonBase) {
-            Write-Host "Python 3.14.0 base dir: $pythonBase"
-            Get-ChildItem -Path $pythonBase -Directory | ForEach-Object {
-              Write-Host "Subdir: $($_.Name) (should be arm64 or arm64-freethreaded)"
-              Get-ChildItem -Path $_.FullName -File -Recurse | Format-Table Name, Length -AutoSize  # Lists files like python.exe
+          Write-Host "=== SYSTEM INFORMATION ===" -ForegroundColor Green
+          Write-Host "OS Version:"
+          [System.Environment]::OSVersion
+          Write-Host ""
+          Write-Host "Processor Architecture:"
+          [System. Environment]::GetEnvironmentVariable("PROCESSOR_ARCHITECTURE")
+          Write-Host ""
+          Write-Host "PATH before installation:"
+          $env:PATH -split ';' | ForEach-Object { Write-Host "  $_" }
+          Write-Host ""
+          Write-Host "=== PYTHON INSTALLATIONS BEFORE SETUP ===" -ForegroundColor Green
+          Write-Host "Checking common Python locations:"
+          $locations = @(
+            "$env:USERPROFILE\AppData\Local\Programs\Python",
+            "$env:ProgramFiles\Python",
+            "${env:ProgramFiles(x86)}\Python",
+            "$env:LOCALAPPDATA\Programs\Python",
+            "C:\hostedtoolcache\windows\Python"
+          )
+          foreach ($loc in $locations) {
+            if (Test-Path $loc) {
+              Write-Host "Found: $loc"
+              Get-ChildItem -Path $loc -Directory | ForEach-Object {
+                Write-Host "  - $_"
+              }
             }
-          } else {
-            Write-Host "No Python 3.14.0 folders exist yet."
           }
-
-      - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: arm64
-          allow-prereleases: true
-
-      - name: Post-Install Analyze Python 3.14 Folders
-        shell: pwsh
-        run: |
-          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-individual-${{ matrix.python-version }}] Post-install: Analyzing Python 3.14 folders"
-          $toolCache = $env:AGENT_TOOLSDIRECTORY ?? $env:RUNNER_TOOL_CACHE
-          $arch = if ('${{ matrix.python-version }}' -eq '3.14t') { 'arm64-freethreaded' } else { 'arm64' }
-          $pythonDir = Join-Path -Path $toolCache -ChildPath "Python\3.14.0\$arch"
-          Write-Host "Target folder for ${{ matrix.python-version }}: $pythonDir"
-          if (Test-Path $pythonDir) {
-            Write-Host "Contents (recursive file list):"
-            Get-ChildItem -Path $pythonDir -File -Recurse | Format-Table FullName, Name, Length -AutoSize  # Shows python.exe, libs, etc.
-            Write-Host "Key files check:"
-            $exeFiles = Get-ChildItem -Path $pythonDir -File -Recurse | Where-Object { $_.Name -match "python.*\.exe" }
-            if ($exeFiles) { $exeFiles | Format-Table Name, Length } else { Write-Host "ERROR: No python exe files found!" }
-          } else {
-            Write-Host "ERROR: Folder $pythonDir not created!"
-          }
-
-      - name: Verify Python Commands
-        shell: bash
-        run: |
-          echo "$(date +'%Y-%m-%d %H:%M:%S') [arm64-individual-${{ matrix.python-version }}] Verifying commands:"
-          python --version 2>&1 || echo "python failed"
-          which python || echo "which failed"
-
-  # ARM64: Co-install (both 3.14 and 3.14t in one job)
-  arm64-coinstall:
-    name: ARM64 Co-Install (3.14 + 3.14t)
-    runs-on: windows-11-arm
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Pre-Install Check Python 3.14 Folders
-        shell: pwsh
-        run: |
-          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-coinstall] Pre-install: No Python 3.14 folders expected."
-          # Same as above (should be empty)
-
-      - name: Setup Regular Python 3.14 (to arm64 folder)
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.14'
-          architecture: arm64
-          allow-prereleases: true
-
-      - name: Mid-Install Check After Regular 3.14
-        shell: pwsh
-        run: |
-          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-coinstall] Mid-install: After regular 3.14 (arm64 folder)"
-          $toolCache = $env:AGENT_TOOLSDIRECTORY ?? $env:RUNNER_TOOL_CACHE
-          $pythonDir = Join-Path -Path $toolCache -ChildPath "Python\3.14.0\arm64"
-          if (Test-Path $pythonDir) {
-            Write-Host "arm64 folder contents:"
-            Get-ChildItem -Path $pythonDir -File -Recurse | Where-Object { $_.Name -match "python.*\.exe" } | Format-Table Name, Length  # Should have python.exe
-          }
-
-      - name: Setup Freethreaded Python 3.14t (to arm64-freethreaded folder)
+      
+      - name: Setup Python 3.14t with debug
         uses: actions/setup-python@v6
         with:
           python-version: '3.14t'
           architecture: arm64
           allow-prereleases: true
-        continue-on-error: true  # ARM64 may fail here
-
-      - name: Post-Install Analyze Both Python 3.14 Folders
+        env:
+          ACTIONS_STEP_DEBUG: true
+          ACTIONS_RUNNER_DEBUG: true
+      
+      - name: Post-installation analysis
         shell: pwsh
         run: |
-          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-coinstall] Post-install: Analyzing both folders"
-          $toolCache = $env:AGENT_TOOLSDIRECTORY ?? $env:RUNNER_TOOL_CACHE
-          @('arm64', 'arm64-freethreaded') | ForEach-Object {
-            $pythonDir = Join-Path -Path $toolCache -ChildPath "Python\3.14.0\$_"
-            Write-Host "Folder: $_ ($pythonDir)"
-            if (Test-Path $pythonDir) {
-              Get-ChildItem -Path $pythonDir -File -Recurse | Where-Object { $_.Name -match "python.*\.exe" } | Format-Table Name, Length  # Check for python.exe in both
+          Write-Host "=== POST-INSTALLATION ANALYSIS ===" -ForegroundColor Green
+          Write-Host ""
+          Write-Host "PATH after installation:"
+          $env:PATH -split ';' | ForEach-Object { Write-Host "  $_" }
+          Write-Host ""
+          Write-Host "=== PYTHON INSTALLATIONS AFTER SETUP ===" -ForegroundColor Green
+          Write-Host "Tool cache location:"
+          if (Test-Path "C:\hostedtoolcache\windows\Python") {
+            Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Recurse -Directory | 
+              Where-Object { $_. Name -match "3\.14" } | 
+              ForEach-Object { 
+                Write-Host "Found: $($_.FullName)"
+                if (Test-Path "$($_. FullName)\python.exe") {
+                  Write-Host "  Has python.exe: YES"
+                  & "$($_.FullName)\python.exe" --version 2>&1
+                } else {
+                  Write-Host "  Has python.exe: NO"
+                }
+              }
+          }
+          Write-Host ""
+          Write-Host "=== CHECKING PYTHON COMMANDS ===" -ForegroundColor Green
+          $pythonCommands = @("python", "python3", "python3.14", "python3. 14t")
+          foreach ($cmd in $pythonCommands) {
+            Write-Host "Checking $cmd:"
+            $pythonPath = Get-Command $cmd -ErrorAction SilentlyContinue
+            if ($pythonPath) {
+              Write-Host "  Found at: $($pythonPath.Source)"
+              & $cmd --version 2>&1
             } else {
-              Write-Host "ERROR: Folder not found!"
+              Write-Host "  Not found in PATH"
             }
           }
-
-      - name: Verify Python Commands
+      
+      - name: Directory structure analysis
         shell: bash
         run: |
-          echo "$(date +'%Y-%m-%d %H:%M:%S') [arm64-coinstall] Verifying commands:"
-          python --version 2>&1 || echo "default python failed"
-          python3.14 --version 2>&1 || echo "python3.14 failed"
-          python3.14t --version 2>&1 || echo "python3.14t failed"
-
-  # x64: Individual (similar to ARM64)
-  x64-individual:
-    name: x64 Individual (3.14 or 3.14t)
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        python-version: ['3.14', '3.14t']
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Pre-Install Check Python 3.14 Folders
-        shell: pwsh
-        run: |
-          # Same as ARM64, but for x64/x64-freethreaded
-
-      - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: x64
-          allow-prereleases: true
-
-      - name: Post-Install Analyze Python 3.14 Folders
-        shell: pwsh
-        run: |
-          # Same as ARM64, but check x64 dirs
-
-      - name: Verify Python Commands
+          echo "=== TOOL CACHE STRUCTURE ==="
+          if [ -d "/c/hostedtoolcache/windows/Python" ]; then
+            echo "Python tool cache contents:"
+            find /c/hostedtoolcache/windows/Python -type d -name "*3.14*" 2>/dev/null | while read dir; do
+              echo "Directory: $dir"
+              echo "  Contents:"
+              ls -la "$dir" 2>/dev/null | head -20
+              echo ""
+            done
+          else
+            echo "Tool cache not found at expected location"
+          fi
+          
+          echo "=== CHECKING FOR PYTHON EXECUTABLES ==="
+          find /c/hostedtoolcache -name "python*. exe" 2>/dev/null | grep -i "3\. 14"
+      
+      - name: Test Python execution
         shell: bash
+        continue-on-error: true
         run: |
-          # Same as ARM64
+          echo "=== PYTHON EXECUTION TEST ==="
+          echo "Attempting to run python:"
+          python --version || echo "Failed to run python"
+          echo ""
+          echo "Python location from which:"
+          which python || echo "Python not found in PATH"
+          echo ""
+          echo "Python sys info:"
+          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys. version}'); print(f'Platform: {sys.platform}')" || echo "Failed to get sys info"
+          echo ""
+          echo "Free-threading check:"
+          python -c "import sys; print(f'Has _is_gil_enabled: {hasattr(sys, \"_is_gil_enabled\")}'); print(f'GIL enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')" || echo "Failed to check free-threading"
 
-  # x64: Co-install (both in one job)
-  x64-coinstall:
-    name: x64 Co-Install (3.14 + 3.14t)
+  debug-x64-comparison:
+    name: Debug x64 Installation (for comparison)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Pre-Install Check Python 3.14 Folders
+      
+      - name: Pre-installation environment check
         shell: pwsh
         run: |
-          # Same as ARM64
-
-      - name: Setup Regular Python 3.14 (to x64 folder)
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.14'
-          architecture: x64
-          allow-prereleases: true
-
-      - name: Mid-Install Check After Regular 3.14
-        shell: pwsh
-        run: |
-          # Same as ARM64
-
-      - name: Setup Freethreaded Python 3.14t (to x64-freethreaded folder)
+          Write-Host "=== SYSTEM INFORMATION ===" -ForegroundColor Green
+          Write-Host "OS Version:"
+          [System.Environment]::OSVersion
+          Write-Host ""
+          Write-Host "Processor Architecture:"
+          [System.Environment]::GetEnvironmentVariable("PROCESSOR_ARCHITECTURE")
+          Write-Host ""
+          Write-Host "PATH before installation:"
+          $env:PATH -split ';' | Select-Object -First 10 | ForEach-Object { Write-Host "  $_" }
+      
+      - name: Setup Python 3.14t with debug
         uses: actions/setup-python@v6
         with:
           python-version: '3.14t'
           architecture: x64
           allow-prereleases: true
-
-      - name: Post-Install Analyze Both Python 3.14 Folders
+        env:
+          ACTIONS_STEP_DEBUG: true
+          ACTIONS_RUNNER_DEBUG: true
+      
+      - name: Post-installation analysis
         shell: pwsh
         run: |
-          # Same as ARM64
-
-      - name: Verify Python Commands
+          Write-Host "=== POST-INSTALLATION ANALYSIS ===" -ForegroundColor Green
+          Write-Host ""
+          Write-Host "Tool cache location:"
+          if (Test-Path "C:\hostedtoolcache\windows\Python") {
+            Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Recurse -Directory | 
+              Where-Object { $_. Name -match "3\.14" } | 
+              ForEach-Object { 
+                Write-Host "Found: $($_. FullName)"
+                if (Test-Path "$($_.FullName)\python.exe") {
+                  Write-Host "  Has python.exe: YES"
+                  & "$($_.FullName)\python.exe" --version 2>&1
+                } else {
+                  Write-Host "  Has python.exe: NO"
+                }
+              }
+          }
+      
+      - name: Test Python execution
         shell: bash
         run: |
-          # Same as ARM64
+          echo "=== PYTHON EXECUTION TEST ==="
+          python --version
+          which python
+          python -c "import sys; print(f'Executable: {sys. executable}'); print(f'Version: {sys.version}'); print(f'Platform: {sys.platform}')"
+          python -c "import sys; print(f'Free-threading enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')"
