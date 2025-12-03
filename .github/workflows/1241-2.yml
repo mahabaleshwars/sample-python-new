@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup Python 3. 14t (free-threaded)
+      - name: Setup Python 3.14t (free-threaded)
         uses: actions/setup-python@v6
         with:
           python-version: '3.14t'
@@ -27,10 +27,10 @@ jobs:
           Write-Host "Checking C:\hostedtoolcache\windows\Python:" -ForegroundColor Yellow
           if (Test-Path "C:\hostedtoolcache\windows\Python") {
             Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Directory | ForEach-Object {
-              Write-Host "  [$($_. Name)]"
+              Write-Host "  [$($_.Name)]"
               Get-ChildItem -Path $_. FullName -Directory | ForEach-Object {
                 Write-Host "    - $($_.Name)"
-                $pythonPath = Join-Path $_. FullName "python.exe"
+                $pythonPath = Join-Path $_.FullName "python.exe"
                 if (Test-Path $pythonPath) {
                   Write-Host "      ✓ python.exe found"
                 } else {
@@ -102,13 +102,13 @@ jobs:
           if (Test-Path "C:\hostedtoolcache\windows\Python") {
             $toolCachePath = "C:\hostedtoolcache\windows\Python"
             Get-ChildItem -Path $toolCachePath | ForEach-Object {
-              Write-Host "📁 $($_.Name) [$($_.GetType(). Name)]"
+              Write-Host "📁 $($_.Name)"
               if ($_.PSIsContainer) {
-                Get-ChildItem -Path $_.FullName | ForEach-Object {
+                Get-ChildItem -Path $_. FullName | ForEach-Object {
                   Write-Host "  📁 $($_.Name)"
                   if ($_.PSIsContainer -and $_.Name -match "3\. 14") {
                     Write-Host "    Subdirectories:"
-                    Get-ChildItem -Path $_. FullName -Directory | ForEach-Object {
+                    Get-ChildItem -Path $_.FullName -Directory | ForEach-Object {
                       Write-Host "      📁 $($_.Name)"
                       $binPath = Join-Path $_. FullName "bin"
                       $exePath = Join-Path $_. FullName "python.exe"
@@ -147,7 +147,7 @@ jobs:
                 $buildPath = $_.FullName
                 Write-Host "    Directory Tree:"
                 Get-ChildItem -Path $buildPath -Recurse | Select-Object -First 30 | ForEach-Object {
-                  $level = ($_. FullName.Split('\'). Count - $buildPath.Split('\').Count) * 2
+                  $level = (($_.FullName. Split('\'). Count) - ($buildPath.Split('\').Count)) * 2
                   $indent = " " * $level
                   if ($_.PSIsContainer) {
                     Write-Host "$indent📁 $($_.Name)/"
@@ -171,7 +171,7 @@ jobs:
           which python || echo "FAILED"
           echo ""
           echo "Python sys info:"
-          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys.version}')" || echo "FAILED"
+          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys. version}')" || echo "FAILED"
           echo ""
           echo "=== Checking all installed Python versions ==="
           for py in python3.14 python3.14t python python3; do
@@ -188,7 +188,7 @@ jobs:
           done
 
   test-separated-jobs:
-    name: Test 3.14 and 3. 14t in separate jobs
+    name: Test 3.14 and 3.14t in separate jobs
     runs-on: windows-11-arm
     strategy:
       matrix:
@@ -210,7 +210,7 @@ jobs:
           Write-Host ""
           Write-Host "Tool cache contents:" -ForegroundColor Yellow
           if (Test-Path "C:\hostedtoolcache\windows\Python") {
-            Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Recurse -File -Filter "python.exe" | ForEach-Object {
+            Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Recurse -File -Filter "python. exe" | ForEach-Object {
               Write-Host "Found python.exe at: $($_. FullName)"
               $versionInfo = & $_.FullName --version 2>&1
               Write-Host "  Version info: $versionInfo"
@@ -234,7 +234,7 @@ jobs:
           which python || echo "FAILED"
           echo ""
           echo "Python sys info:"
-          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys.version}')" || echo "FAILED"
+          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys. version}')" || echo "FAILED"
           echo ""
           if [ "${{ matrix.python-version }}" == "3.14t" ]; then
             echo "Free-threading status:"
@@ -264,12 +264,15 @@ jobs:
           if (Test-Path "C:\hostedtoolcache\windows\Python") {
             $toolCachePath = "C:\hostedtoolcache\windows\Python"
             Get-ChildItem -Path $toolCachePath | ForEach-Object {
-              Write-Host "📁 $($_.Name)"
-              Get-ChildItem -Path $_. FullName | ForEach-Object {
-                Write-Host "  📁 $($_.Name)"
-                Get-ChildItem -Path $_. FullName | ForEach-Object {
-                  Write-Host "    📁 $($_. Name)"
-                  $pythonExe = Join-Path $_.FullName "python.exe"
+              $versionDir = $_
+              Write-Host "📁 $($versionDir. Name)"
+              Get-ChildItem -Path $versionDir. FullName | ForEach-Object {
+                $archDir = $_
+                Write-Host "  📁 $($archDir.Name)"
+                Get-ChildItem -Path $archDir.FullName | ForEach-Object {
+                  $buildDir = $_
+                  Write-Host "    📁 $($buildDir. Name)"
+                  $pythonExe = Join-Path $buildDir. FullName "python.exe"
                   if (Test-Path $pythonExe) {
                     Write-Host "      ✓ python.exe [EXISTS]"
                   } else {
@@ -324,7 +327,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup Python ${{ matrix.python-version }}
+      - name: Setup Python ${{ matrix. python-version }}
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
