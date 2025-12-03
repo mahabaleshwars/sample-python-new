@@ -1,4 +1,4 @@
-name: Debug Python 3.14t Installation
+name: Test Python 3.14t on Windows ARM64
 
 on:
   push:
@@ -6,180 +6,361 @@ on:
   workflow_dispatch:
 
 jobs:
-  debug-arm64:
-    name: Debug ARM64 Installation
+  test-single-version:
+    name: Test 3.14t only
     runs-on: windows-11-arm
     steps:
       - uses: actions/checkout@v4
       
-      - name: Pre-installation environment check
-        shell: pwsh
-        run: |
-          Write-Host "=== SYSTEM INFORMATION ===" -ForegroundColor Green
-          Write-Host "OS Version:"
-          [System. Environment]::OSVersion
-          Write-Host ""
-          Write-Host "Processor Architecture:"
-          [System.Environment]::GetEnvironmentVariable("PROCESSOR_ARCHITECTURE")
-          Write-Host ""
-          Write-Host "PATH before installation:"
-          $env:PATH -split ';' | ForEach-Object { Write-Host "  $_" }
-          Write-Host ""
-          Write-Host "=== PYTHON INSTALLATIONS BEFORE SETUP ===" -ForegroundColor Green
-          Write-Host "Checking common Python locations:"
-          $locations = @(
-            "$env:USERPROFILE\AppData\Local\Programs\Python",
-            "$env:ProgramFiles\Python",
-            "${env:ProgramFiles(x86)}\Python",
-            "$env:LOCALAPPDATA\Programs\Python",
-            "C:\hostedtoolcache\windows\Python"
-          )
-          foreach ($loc in $locations) {
-            if (Test-Path $loc) {
-              Write-Host "Found: $loc"
-              Get-ChildItem -Path $loc -Directory | ForEach-Object {
-                Write-Host "  - $_"
-              }
-            }
-          }
-      
-      - name: Setup Python 3.14t with debug
+      - name: Setup Python 3. 14t (free-threaded)
         uses: actions/setup-python@v6
         with:
           python-version: '3.14t'
           architecture: arm64
           allow-prereleases: true
-        env:
-          ACTIONS_STEP_DEBUG: true
-          ACTIONS_RUNNER_DEBUG: true
       
-      - name: Post-installation analysis
+      - name: Show folder contents after installation
         shell: pwsh
         run: |
-          Write-Host "=== POST-INSTALLATION ANALYSIS ===" -ForegroundColor Green
+          Write-Host "=== PYTHON INSTALLATION FOLDER STRUCTURE ===" -ForegroundColor Green
           Write-Host ""
-          Write-Host "PATH after installation:"
-          $env:PATH -split ';' | ForEach-Object { Write-Host "  $_" }
-          Write-Host ""
-          Write-Host "=== PYTHON INSTALLATIONS AFTER SETUP ===" -ForegroundColor Green
-          Write-Host "Tool cache location:"
+          Write-Host "Checking C:\hostedtoolcache\windows\Python:" -ForegroundColor Yellow
           if (Test-Path "C:\hostedtoolcache\windows\Python") {
-            Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Recurse -Directory | 
-              Where-Object { $_.Name -match "3\.14" } | 
-              ForEach-Object { 
-                Write-Host "Found: $($_. FullName)"
-                if (Test-Path "$($_.FullName)\python.exe") {
-                  Write-Host "  Has python.exe: YES"
-                  & "$($_.FullName)\python.exe" --version 2>&1
+            Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Directory | ForEach-Object {
+              Write-Host "  [$($_. Name)]"
+              Get-ChildItem -Path $_. FullName -Directory | ForEach-Object {
+                Write-Host "    - $($_.Name)"
+                $pythonPath = Join-Path $_. FullName "python.exe"
+                if (Test-Path $pythonPath) {
+                  Write-Host "      ✓ python.exe found"
                 } else {
-                  Write-Host "  Has python.exe: NO"
+                  Write-Host "      ✗ python.exe NOT found"
+                  Write-Host "      Contents:"
+                  Get-ChildItem -Path $_.FullName | ForEach-Object {
+                    Write-Host "        - $($_.Name)"
+                  }
                 }
               }
+            }
+          } else {
+            Write-Host "  Path not found!"
           }
           Write-Host ""
-          Write-Host "=== CHECKING PYTHON COMMANDS ===" -ForegroundColor Green
-          $pythonCommands = @("python", "python3", "python3.14", "python3.14t")
-          foreach ($cmd in $pythonCommands) {
-            Write-Host "Checking $cmd:"
-            $pythonPath = Get-Command $cmd -ErrorAction SilentlyContinue
-            if ($pythonPath) {
-              Write-Host "  Found at: $($pythonPath.Source)"
-              & $cmd --version 2>&1
+          Write-Host "Checking PATH entries containing Python:" -ForegroundColor Yellow
+          $env:PATH -split ';' | Where-Object { $_ -match "python|tool" } | ForEach-Object {
+            Write-Host "  $_"
+            if (Test-Path $_) {
+              Write-Host "    [EXISTS]"
+              Get-ChildItem -Path $_ -ErrorAction SilentlyContinue | Select-Object -First 5 | ForEach-Object {
+                Write-Host "      - $($_.Name)"
+              }
             } else {
-              Write-Host "  Not found in PATH"
+              Write-Host "    [DOES NOT EXIST]"
             }
           }
       
-      - name: Directory structure analysis
-        shell: bash
-        run: |
-          echo "=== TOOL CACHE STRUCTURE ==="
-          if [ -d "/c/hostedtoolcache/windows/Python" ]; then
-            echo "Python tool cache contents:"
-            find /c/hostedtoolcache/windows/Python -type d -name "*3.14*" 2>/dev/null | while read dir; do
-              echo "Directory: $dir"
-              echo "  Contents:"
-              ls -la "$dir" 2>/dev/null | head -20
-              echo ""
-            done
-          else
-            echo "Tool cache not found at expected location"
-          fi
-          
-          echo "=== CHECKING FOR PYTHON EXECUTABLES ==="
-          find /c/hostedtoolcache -name "python*. exe" 2>/dev/null | grep -i "3\. 14" || echo "No Python 3.14 executables found"
-      
-      - name: Test Python execution
+      - name: Verify Python installation
         shell: bash
         continue-on-error: true
         run: |
-          echo "=== PYTHON EXECUTION TEST ==="
-          echo "Attempting to run python:"
-          python --version || echo "Failed to run python"
+          echo "Python version:"
+          python --version || echo "FAILED to run: python --version"
           echo ""
-          echo "Python location from which:"
-          which python || echo "Python not found in PATH"
+          echo "Python executable location:"
+          which python || echo "FAILED to find python in PATH"
           echo ""
           echo "Python sys info:"
-          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys. version}'); print(f'Platform: {sys.platform}')" || echo "Failed to get sys info"
-          echo ""
-          echo "Free-threading check:"
-          python -c "import sys; print(f'Has _is_gil_enabled: {hasattr(sys, \"_is_gil_enabled\")}'); print(f'GIL enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')" || echo "Failed to check free-threading"
+          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys.version}')" || echo "FAILED to get sys info"
+      
+      - name: Test free-threading is enabled
+        shell: bash
+        continue-on-error: true
+        run: |
+          python -c "import sys; print(f'Free-threading enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')" || echo "FAILED to test free-threading"
 
-  debug-x64-comparison:
-    name: Debug x64 Installation (for comparison)
+  test-314-and-314t-together:
+    name: Test 3.14 and 3.14t together (one step)
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python 3.14 and 3.14t
+        uses: actions/setup-python@v6
+        with:
+          python-version: |
+            3.14
+            3.14t
+          architecture: arm64
+          allow-prereleases: true
+      
+      - name: Show detailed folder contents after installation
+        shell: pwsh
+        run: |
+          Write-Host "=== DETAILED PYTHON INSTALLATION STRUCTURE ===" -ForegroundColor Green
+          Write-Host ""
+          Write-Host "Tool cache root structure:" -ForegroundColor Yellow
+          if (Test-Path "C:\hostedtoolcache\windows\Python") {
+            $toolCachePath = "C:\hostedtoolcache\windows\Python"
+            Get-ChildItem -Path $toolCachePath | ForEach-Object {
+              Write-Host "📁 $($_.Name) [$($_.GetType(). Name)]"
+              if ($_.PSIsContainer) {
+                Get-ChildItem -Path $_.FullName | ForEach-Object {
+                  Write-Host "  📁 $($_.Name)"
+                  if ($_.PSIsContainer -and $_.Name -match "3\. 14") {
+                    Write-Host "    Subdirectories:"
+                    Get-ChildItem -Path $_. FullName -Directory | ForEach-Object {
+                      Write-Host "      📁 $($_.Name)"
+                      $binPath = Join-Path $_. FullName "bin"
+                      $exePath = Join-Path $_. FullName "python.exe"
+                      if (Test-Path $binPath) {
+                        Write-Host "        └─ bin/ [EXISTS]"
+                        Get-ChildItem -Path $binPath | Select-Object -First 5 | ForEach-Object {
+                          Write-Host "          - $($_.Name)"
+                        }
+                      }
+                      if (Test-Path $exePath) {
+                        Write-Host "        └─ python.exe [EXISTS]"
+                      }
+                    }
+                    Write-Host "    Files in root:"
+                    Get-ChildItem -Path $_.FullName -File | Select-Object -First 10 | ForEach-Object {
+                      Write-Host "      - $($_.Name)"
+                    }
+                  }
+                }
+              }
+            }
+          } else {
+            Write-Host "Tool cache not found!"
+          }
+          
+          Write-Host ""
+          Write-Host "Detailed VERSION directories:" -ForegroundColor Yellow
+          Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Directory | ForEach-Object {
+            Write-Host ""
+            Write-Host "Version Directory: $($_.Name)" -ForegroundColor Cyan
+            Get-ChildItem -Path $_. FullName | ForEach-Object {
+              Write-Host "  Architecture: $($_.Name)"
+              $archPath = $_.FullName
+              Get-ChildItem -Path $archPath | ForEach-Object {
+                Write-Host "    Build/Release: $($_.Name)"
+                $buildPath = $_.FullName
+                Write-Host "    Directory Tree:"
+                Get-ChildItem -Path $buildPath -Recurse | Select-Object -First 30 | ForEach-Object {
+                  $level = ($_. FullName.Split('\'). Count - $buildPath.Split('\').Count) * 2
+                  $indent = " " * $level
+                  if ($_.PSIsContainer) {
+                    Write-Host "$indent📁 $($_.Name)/"
+                  } else {
+                    Write-Host "$indent📄 $($_.Name)"
+                  }
+                }
+              }
+            }
+          }
+      
+      - name: Verify Python installation
+        shell: bash
+        continue-on-error: true
+        run: |
+          echo "=== DEFAULT PYTHON VERSION ==="
+          echo "Python version:"
+          python --version || echo "FAILED"
+          echo ""
+          echo "Python executable location:"
+          which python || echo "FAILED"
+          echo ""
+          echo "Python sys info:"
+          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys.version}')" || echo "FAILED"
+          echo ""
+          echo "=== Checking all installed Python versions ==="
+          for py in python3.14 python3.14t python python3; do
+            echo ""
+            echo "Testing $py:"
+            if command -v $py &> /dev/null; then
+              echo "  Location: $(which $py)"
+              $py --version 2>&1 || echo "  Failed to get version"
+              $py -c "import sys; print(f'  Executable: {sys.executable}')" 2>&1 || echo "  Failed to get sys. executable"
+              $py -c "import sys; print(f'  Free-threading: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"N/A\"}')" 2>&1 || echo "  Failed to check free-threading"
+            else
+              echo "  ✗ NOT found in PATH"
+            fi
+          done
+
+  test-separated-jobs:
+    name: Test 3.14 and 3. 14t in separate jobs
+    runs-on: windows-11-arm
+    strategy:
+      matrix:
+        python-version: ['3.14', '3.14t']
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: arm64
+          allow-prereleases: true
+      
+      - name: Show installation folder for ${{ matrix.python-version }}
+        shell: pwsh
+        run: |
+          Write-Host "=== PYTHON ${{ matrix.python-version }} INSTALLATION ===" -ForegroundColor Green
+          Write-Host ""
+          Write-Host "Tool cache contents:" -ForegroundColor Yellow
+          if (Test-Path "C:\hostedtoolcache\windows\Python") {
+            Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Recurse -File -Filter "python.exe" | ForEach-Object {
+              Write-Host "Found python.exe at: $($_. FullName)"
+              $versionInfo = & $_.FullName --version 2>&1
+              Write-Host "  Version info: $versionInfo"
+            }
+          }
+          Write-Host ""
+          Write-Host "PATH entries:" -ForegroundColor Yellow
+          $env:PATH -split ';' | Where-Object { $_ -match "python|tool" } | ForEach-Object {
+            Write-Host "  $_"
+          }
+      
+      - name: Verify Python installation
+        shell: bash
+        continue-on-error: true
+        run: |
+          echo "=== Python ${{ matrix.python-version }} Verification ==="
+          echo "Python version:"
+          python --version || echo "FAILED"
+          echo ""
+          echo "Python executable location:"
+          which python || echo "FAILED"
+          echo ""
+          echo "Python sys info:"
+          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys.version}')" || echo "FAILED"
+          echo ""
+          if [ "${{ matrix.python-version }}" == "3.14t" ]; then
+            echo "Free-threading status:"
+            python -c "import sys; print(f'Free-threading enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"N/A\"}')" || echo "FAILED"
+          fi
+
+  test-x64-314-and-314t-together:
+    name: Test 3.14 and 3.14t together on Windows x64
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       
-      - name: Pre-installation environment check
-        shell: pwsh
-        run: |
-          Write-Host "=== SYSTEM INFORMATION ===" -ForegroundColor Green
-          Write-Host "OS Version:"
-          [System. Environment]::OSVersion
-          Write-Host ""
-          Write-Host "Processor Architecture:"
-          [System.Environment]::GetEnvironmentVariable("PROCESSOR_ARCHITECTURE")
-          Write-Host ""
-          Write-Host "PATH before installation (first 10 entries):"
-          $env:PATH -split ';' | Select-Object -First 10 | ForEach-Object { Write-Host "  $_" }
-      
-      - name: Setup Python 3.14t with debug
+      - name: Setup Python 3. 14 and 3.14t
         uses: actions/setup-python@v6
         with:
-          python-version: '3.14t'
+          python-version: |
+            3.14
+            3.14t
           architecture: x64
           allow-prereleases: true
-        env:
-          ACTIONS_STEP_DEBUG: true
-          ACTIONS_RUNNER_DEBUG: true
       
-      - name: Post-installation analysis
+      - name: Show folder contents after installation (x64)
         shell: pwsh
         run: |
-          Write-Host "=== POST-INSTALLATION ANALYSIS ===" -ForegroundColor Green
+          Write-Host "=== X64 PYTHON INSTALLATION STRUCTURE ===" -ForegroundColor Green
           Write-Host ""
-          Write-Host "Tool cache location:"
           if (Test-Path "C:\hostedtoolcache\windows\Python") {
-            Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Recurse -Directory | 
-              Where-Object { $_. Name -match "3\.14" } | 
-              ForEach-Object { 
-                Write-Host "Found: $($_. FullName)"
-                if (Test-Path "$($_.FullName)\python.exe") {
-                  Write-Host "  Has python.exe: YES"
-                  & "$($_.FullName)\python.exe" --version 2>&1
-                } else {
-                  Write-Host "  Has python.exe: NO"
+            $toolCachePath = "C:\hostedtoolcache\windows\Python"
+            Get-ChildItem -Path $toolCachePath | ForEach-Object {
+              Write-Host "📁 $($_.Name)"
+              Get-ChildItem -Path $_. FullName | ForEach-Object {
+                Write-Host "  📁 $($_.Name)"
+                Get-ChildItem -Path $_. FullName | ForEach-Object {
+                  Write-Host "    📁 $($_. Name)"
+                  $pythonExe = Join-Path $_.FullName "python.exe"
+                  if (Test-Path $pythonExe) {
+                    Write-Host "      ✓ python.exe [EXISTS]"
+                  } else {
+                    Write-Host "      ✗ python.exe [MISSING]"
+                  }
                 }
               }
+            }
           }
       
-      - name: Test Python execution
+      - name: Verify Python installation
         shell: bash
         run: |
-          echo "=== PYTHON EXECUTION TEST ==="
+          echo "=== X64 PYTHON VERIFICATION ==="
+          echo "Default Python version:"
+          python --version
+          echo ""
+          echo "Python executable location:"
+          which python
+          echo ""
+          echo "Python sys info:"
+          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys.version}')"
+          echo ""
+          echo "=== Checking all installed Python versions ==="
+          for py in python3.14 python3.14t; do
+            echo ""
+            echo "Testing $py:"
+            if command -v $py &> /dev/null; then
+              $py --version
+              $py -c "import sys; print(f'  Executable: {sys.executable}')"
+              $py -c "import sys; print(f'  Free-threading: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"N/A\"}')"
+            else
+              echo "  $py not found!"
+            fi
+          done
+      
+      - name: Check what maturin can find
+        shell: bash
+        run: |
+          echo "=== Installing maturin ==="
+          pip install maturin
+          echo ""
+          echo "=== Maturin list-python output ==="
+          maturin list-python || echo "maturin list-python failed"
+
+  test-x64-separated-jobs:
+    name: Test 3.14 and 3.14t in separate jobs on Windows x64
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ['3.14', '3.14t']
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+          allow-prereleases: true
+      
+      - name: Show installation folder for x64 ${{ matrix.python-version }}
+        shell: pwsh
+        run: |
+          Write-Host "=== X64 PYTHON ${{ matrix.python-version }} INSTALLATION ===" -ForegroundColor Green
+          if (Test-Path "C:\hostedtoolcache\windows\Python") {
+            Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Recurse -File -Filter "python.exe" | ForEach-Object {
+              Write-Host "Found: $($_.FullName)"
+              $versionInfo = & $_.FullName --version 2>&1
+              Write-Host "  Version: $versionInfo"
+            }
+          }
+      
+      - name: Verify Python installation
+        shell: bash
+        run: |
+          echo "=== X64 Python ${{ matrix.python-version }} Verification ==="
           python --version
           which python
-          python -c "import sys; print(f'Executable: {sys. executable}'); print(f'Version: {sys.version}'); print(f'Platform: {sys. platform}')"
-          python -c "import sys; print(f'Free-threading enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')"
+          python -c "import sys; print(f'Executable: {sys. executable}'); print(f'Version: {sys.version}')"
+          echo ""
+          if [ "${{ matrix.python-version }}" == "3.14t" ]; then
+            echo "Free-threading status:"
+            python -c "import sys; print(f'Free-threading enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"N/A\"}')"
+          fi
+      
+      - name: Check what maturin can find
+        shell: bash
+        run: |
+          echo "=== Installing maturin ==="
+          pip install maturin
+          echo ""
+          echo "=== Maturin list-python output ==="
+          maturin list-python || echo "maturin list-python failed"
