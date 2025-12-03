@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pre-Install: Check Existing Python 3.14 Folders
+      - name: Pre-Install Check Existing Python 3.14 Folders
         shell: pwsh
         run: |
           Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-individual-${{ matrix.python-version }}] Pre-install: Checking Python 3.14 folders"
@@ -37,7 +37,7 @@ jobs:
           architecture: arm64
           allow-prereleases: true
 
-      - name: Post-Install: Analyze Python 3.14 Folders
+      - name: Post-Install Analyze Python 3.14 Folders
         shell: pwsh
         run: |
           Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-individual-${{ matrix.python-version }}] Post-install: Analyzing Python 3.14 folders"
@@ -69,7 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pre-Install: Check Python 3.14 Folders
+      - name: Pre-Install Check Python 3.14 Folders
         shell: pwsh
         run: |
           Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-coinstall] Pre-install: No Python 3.14 folders expected."
@@ -82,7 +82,7 @@ jobs:
           architecture: arm64
           allow-prereleases: true
 
-      - name: Mid-Install: Check After Regular 3.14
+      - name: Mid-Install Check After Regular 3.14
         shell: pwsh
         run: |
           Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-coinstall] Mid-install: After regular 3.14 (arm64 folder)"
@@ -101,7 +101,7 @@ jobs:
           allow-prereleases: true
         continue-on-error: true  # ARM64 may fail here
 
-      - name: Post-Install: Analyze Both Python 3.14 Folders
+      - name: Post-Install Analyze Both Python 3.14 Folders
         shell: pwsh
         run: |
           Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-coinstall] Post-install: Analyzing both folders"
@@ -134,7 +134,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pre-Install: Check Python 3.14 Folders
+      - name: Pre-Install Check Python 3.14 Folders
         shell: pwsh
         run: |
           # Same as ARM64, but for x64/x64-freethreaded
@@ -146,7 +146,7 @@ jobs:
           architecture: x64
           allow-prereleases: true
 
-      - name: Post-Install: Analyze Python 3.14 Folders
+      - name: Post-Install Analyze Python 3.14 Folders
         shell: pwsh
         run: |
           # Same as ARM64, but check x64 dirs
@@ -163,7 +163,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pre-Install: Check Python 3.14 Folders
+      - name: Pre-Install Check Python 3.14 Folders
         shell: pwsh
         run: |
           # Same as ARM64
@@ -175,7 +175,7 @@ jobs:
           architecture: x64
           allow-prereleases: true
 
-      - name: Mid-Install: Check After Regular 3.14
+      - name: Mid-Install Check After Regular 3.14
         shell: pwsh
         run: |
           # Same as ARM64
@@ -187,7 +187,7 @@ jobs:
           architecture: x64
           allow-prereleases: true
 
-      - name: Post-Install: Analyze Both Python 3.14 Folders
+      - name: Post-Install Analyze Both Python 3.14 Folders
         shell: pwsh
         run: |
           # Same as ARM64
