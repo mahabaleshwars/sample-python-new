@@ -14,7 +14,7 @@ jobs:
         run: echo "ACTIONS_STEP_DEBUG=true" >> $GITHUB_ENV
         shell: bash
 
-      - name: [ARM64] Pre-install File Check
+      - name: Pre-install File Check arm64
         shell: pwsh
         run: |
           $path = "C:\hostedtoolcache\windows\Python"
@@ -31,7 +31,7 @@ jobs:
           architecture: arm64
           allow-prereleases: true
 
-      - name: [ARM64] Post-install Deep Analysis
+      - name: Post-install Deep Analysis arm64
         if: always()
         shell: pwsh
         run: |
@@ -55,7 +55,7 @@ jobs:
         run: echo "ACTIONS_STEP_DEBUG=true" >> $GITHUB_ENV
         shell: bash
 
-      - name: [x64] Pre-install File Check
+      - name: Pre-install File Check x64
         shell: pwsh
         run: |
           $path = "C:\hostedtoolcache\windows\Python"
@@ -72,7 +72,7 @@ jobs:
           architecture: x64
           allow-prereleases: true
 
-      - name: [x64] Post-install Deep Analysis
+      - name: Post-install Deep Analysis x64
         if: always()
         shell: pwsh
         run: |
