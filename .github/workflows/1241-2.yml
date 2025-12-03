@@ -13,78 +13,88 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Setup Python 3.14t (free-threaded)
+        id: setup-python
+        continue-on-error: true
         uses: actions/setup-python@v6
         with:
           python-version: '3.14t'
           architecture: arm64
           allow-prereleases: true
       
-      - name: Show folder contents after installation
-        shell: pwsh
+      - name: Inspect Python installation directory (always runs)
+        if: always()
+        shell: powershell
         run: |
-          Write-Host "=== PYTHON INSTALLATION FOLDER STRUCTURE ===" -ForegroundColor Green
+          Write-Host "=== Python Setup Status: ${{ steps.setup-python. outcome }} ==="
           Write-Host ""
-          Write-Host "Checking C:\hostedtoolcache\windows\Python:" -ForegroundColor Yellow
+          Write-Host "=== Checking hostedtoolcache directory structure ==="
           if (Test-Path "C:\hostedtoolcache\windows\Python") {
-            Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Directory | ForEach-Object {
-              Write-Host "  [$($_.Name)]"
-              Get-ChildItem -Path $_. FullName -Directory | ForEach-Object {
-                Write-Host "    - $($_.Name)"
-                $pythonPath = Join-Path $_.FullName "python.exe"
-                if (Test-Path $pythonPath) {
-                  Write-Host "      ✓ python.exe found"
-                } else {
-                  Write-Host "      ✗ python.exe NOT found"
-                  Write-Host "      Contents:"
-                  Get-ChildItem -Path $_.FullName | ForEach-Object {
-                    Write-Host "        - $($_.Name)"
-                  }
-                }
-              }
-            }
+            Get-ChildItem "C:\hostedtoolcache\windows\Python" -Recurse -ErrorAction SilentlyContinue | 
+              Select-Object FullName, Length, LastWriteTime | 
+              Format-Table -AutoSize
           } else {
-            Write-Host "  Path not found!"
+            Write-Host "Python toolcache directory does not exist"
           }
+          
           Write-Host ""
-          Write-Host "Checking PATH entries containing Python:" -ForegroundColor Yellow
-          $env:PATH -split ';' | Where-Object { $_ -match "python|tool" } | ForEach-Object {
-            Write-Host "  $_"
-            if (Test-Path $_) {
-              Write-Host "    [EXISTS]"
-              Get-ChildItem -Path $_ -ErrorAction SilentlyContinue | Select-Object -First 5 | ForEach-Object {
-                Write-Host "      - $($_.Name)"
-              }
-            } else {
-              Write-Host "    [DOES NOT EXIST]"
-            }
+          Write-Host "=== Looking for all Python executables ==="
+          Get-ChildItem "C:\hostedtoolcache\windows\Python" -Recurse -Filter "*.exe" -ErrorAction SilentlyContinue |
+            Select-Object FullName, Length |
+            Format-Table -AutoSize
+          
+          Write-Host ""
+          Write-Host "=== Checking temp directory for downloaded archives ==="
+          if (Test-Path "C:\a\_temp") {
+            Get-ChildItem "C:\a\_temp" -Filter "*.zip" -ErrorAction SilentlyContinue |
+              Select-Object Name, Length, LastWriteTime |
+              Format-Table -AutoSize
           }
       
       - name: Verify Python installation
+        if: steps.setup-python.outcome == 'success'
         shell: bash
-        continue-on-error: true
         run: |
           echo "Python version:"
-          python --version || echo "FAILED to run: python --version"
+          python --version
           echo ""
           echo "Python executable location:"
-          which python || echo "FAILED to find python in PATH"
+          which python
           echo ""
           echo "Python sys info:"
-          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys.version}')" || echo "FAILED to get sys info"
+          python -c "import sys; print(f'Executable: {sys. executable}'); print(f'Version: {sys.version}')"
       
       - name: Test free-threading is enabled
+        if: steps.setup-python.outcome == 'success'
         shell: bash
-        continue-on-error: true
         run: |
-          python -c "import sys; print(f'Free-threading enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')" || echo "FAILED to test free-threading"
+          python -c "import sys; print(f'Free-threading enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"Unknown\"}')"
+      
+      - name: Report failure
+        if: steps.setup-python.outcome == 'failure'
+        run: |
+          echo "::error::Python setup failed - check diagnostic output above"
+          exit 1
 
   test-314-and-314t-together:
-    name: Test 3.14 and 3.14t together (one step)
+    name: Test 3.14 and 3. 14t together (one step)
     runs-on: windows-11-arm
     steps:
       - uses: actions/checkout@v4
       
+      - name: Pre-installation directory check
+        shell: powershell
+        run: |
+          Write-Host "=== Before Installation ==="
+          if (Test-Path "C:\hostedtoolcache\windows\Python") {
+            Get-ChildItem "C:\hostedtoolcache\windows\Python" -ErrorAction SilentlyContinue |
+              Select-Object Name, LastWriteTime
+          } else {
+            Write-Host "Python toolcache directory does not exist yet"
+          }
+      
       - name: Setup Python 3.14 and 3.14t
+        id: setup-python
+        continue-on-error: true
         uses: actions/setup-python@v6
         with:
           python-version: |
@@ -93,99 +103,84 @@ jobs:
           architecture: arm64
           allow-prereleases: true
       
-      - name: Show detailed folder contents after installation
-        shell: pwsh
+      - name: Inspect Python installation directory (always runs)
+        if: always()
+        shell: powershell
         run: |
-          Write-Host "=== DETAILED PYTHON INSTALLATION STRUCTURE ===" -ForegroundColor Green
+          Write-Host "=== Python Setup Status: ${{ steps.setup-python.outcome }} ==="
           Write-Host ""
-          Write-Host "Tool cache root structure:" -ForegroundColor Yellow
+          Write-Host "=== Full hostedtoolcache directory structure ==="
           if (Test-Path "C:\hostedtoolcache\windows\Python") {
-            $toolCachePath = "C:\hostedtoolcache\windows\Python"
-            Get-ChildItem -Path $toolCachePath | ForEach-Object {
-              Write-Host "📁 $($_.Name)"
-              if ($_.PSIsContainer) {
-                Get-ChildItem -Path $_. FullName | ForEach-Object {
-                  Write-Host "  📁 $($_.Name)"
-                  if ($_.PSIsContainer -and $_.Name -match "3\. 14") {
-                    Write-Host "    Subdirectories:"
-                    Get-ChildItem -Path $_.FullName -Directory | ForEach-Object {
-                      Write-Host "      📁 $($_.Name)"
-                      $binPath = Join-Path $_. FullName "bin"
-                      $exePath = Join-Path $_. FullName "python.exe"
-                      if (Test-Path $binPath) {
-                        Write-Host "        └─ bin/ [EXISTS]"
-                        Get-ChildItem -Path $binPath | Select-Object -First 5 | ForEach-Object {
-                          Write-Host "          - $($_.Name)"
-                        }
-                      }
-                      if (Test-Path $exePath) {
-                        Write-Host "        └─ python.exe [EXISTS]"
-                      }
-                    }
-                    Write-Host "    Files in root:"
-                    Get-ChildItem -Path $_.FullName -File | Select-Object -First 10 | ForEach-Object {
-                      Write-Host "      - $($_.Name)"
-                    }
-                  }
-                }
-              }
-            }
+            Get-ChildItem "C:\hostedtoolcache\windows\Python" -Recurse -ErrorAction SilentlyContinue | 
+              Select-Object FullName, Length, LastWriteTime | 
+              Format-Table -AutoSize
           } else {
-            Write-Host "Tool cache not found!"
+            Write-Host "Python toolcache directory does not exist"
           }
           
           Write-Host ""
-          Write-Host "Detailed VERSION directories:" -ForegroundColor Yellow
-          Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Directory | ForEach-Object {
-            Write-Host ""
-            Write-Host "Version Directory: $($_.Name)" -ForegroundColor Cyan
-            Get-ChildItem -Path $_. FullName | ForEach-Object {
-              Write-Host "  Architecture: $($_.Name)"
-              $archPath = $_.FullName
-              Get-ChildItem -Path $archPath | ForEach-Object {
-                Write-Host "    Build/Release: $($_.Name)"
-                $buildPath = $_.FullName
-                Write-Host "    Directory Tree:"
-                Get-ChildItem -Path $buildPath -Recurse | Select-Object -First 30 | ForEach-Object {
-                  $level = (($_.FullName. Split('\'). Count) - ($buildPath.Split('\').Count)) * 2
-                  $indent = " " * $level
-                  if ($_.PSIsContainer) {
-                    Write-Host "$indent📁 $($_.Name)/"
-                  } else {
-                    Write-Host "$indent📄 $($_.Name)"
-                  }
-                }
-              }
+          Write-Host "=== All Python executables ==="
+          Get-ChildItem "C:\hostedtoolcache\windows\Python" -Recurse -Filter "python*. exe" -ErrorAction SilentlyContinue |
+            Select-Object FullName, Length |
+            Format-Table -AutoSize
+          
+          Write-Host ""
+          Write-Host "=== Architecture subdirectories ==="
+          if (Test-Path "C:\hostedtoolcache\windows\Python\3.14. 0") {
+            Get-ChildItem "C:\hostedtoolcache\windows\Python\3. 14.0" -Directory -ErrorAction SilentlyContinue |
+              Select-Object Name, LastWriteTime |
+              Format-Table -AutoSize
+          }
+          
+          Write-Host ""
+          Write-Host "=== Checking specific architecture paths ==="
+          $paths = @(
+            "C:\hostedtoolcache\windows\Python\3.14.0\arm64",
+            "C:\hostedtoolcache\windows\Python\3.14.0\arm64-freethreaded"
+          )
+          foreach ($path in $paths) {
+            Write-Host "`nPath: $path"
+            if (Test-Path $path) {
+              Write-Host "EXISTS - Contents:"
+              Get-ChildItem $path -ErrorAction SilentlyContinue |
+                Select-Object Name, Length |
+                Format-Table -AutoSize
+            } else {
+              Write-Host "DOES NOT EXIST"
             }
           }
       
       - name: Verify Python installation
+        if: steps.setup-python.outcome == 'success'
         shell: bash
-        continue-on-error: true
         run: |
-          echo "=== DEFAULT PYTHON VERSION ==="
-          echo "Python version:"
-          python --version || echo "FAILED"
+          echo "Default Python version:"
+          python --version
           echo ""
           echo "Python executable location:"
-          which python || echo "FAILED"
+          which python
           echo ""
           echo "Python sys info:"
-          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys. version}')" || echo "FAILED"
+          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys.version}')"
           echo ""
           echo "=== Checking all installed Python versions ==="
-          for py in python3.14 python3.14t python python3; do
+          for py in python3.14 python3. 14t; do
             echo ""
             echo "Testing $py:"
             if command -v $py &> /dev/null; then
-              echo "  Location: $(which $py)"
-              $py --version 2>&1 || echo "  Failed to get version"
-              $py -c "import sys; print(f'  Executable: {sys.executable}')" 2>&1 || echo "  Failed to get sys. executable"
-              $py -c "import sys; print(f'  Free-threading: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"N/A\"}')" 2>&1 || echo "  Failed to check free-threading"
+              $py --version
+              $py -c "import sys; print(f'  Executable: {sys.executable}')"
+              $py -c "import sys; print(f'  Free-threading: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"N/A\"}')"
             else
-              echo "  ✗ NOT found in PATH"
+              echo "  $py not found!"
             fi
           done
+      
+      - name: Report failure
+        if: steps.setup-python.outcome == 'failure'
+        run: |
+          echo "::error::Python setup failed - check diagnostic output above"
+          exit 1
 
   test-separated-jobs:
     name: Test 3.14 and 3.14t in separate jobs
@@ -197,96 +192,109 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Setup Python ${{ matrix.python-version }}
+        id: setup-python
+        continue-on-error: true
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           architecture: arm64
           allow-prereleases: true
       
-      - name: Show installation folder for ${{ matrix.python-version }}
-        shell: pwsh
+      - name: Inspect Python installation directory (always runs)
+        if: always()
+        shell: powershell
         run: |
-          Write-Host "=== PYTHON ${{ matrix.python-version }} INSTALLATION ===" -ForegroundColor Green
+          Write-Host "=== Python ${{ matrix.python-version }} Setup Status: ${{ steps.setup-python.outcome }} ==="
           Write-Host ""
-          Write-Host "Tool cache contents:" -ForegroundColor Yellow
+          Write-Host "=== hostedtoolcache directory structure ==="
           if (Test-Path "C:\hostedtoolcache\windows\Python") {
-            Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Recurse -File -Filter "python. exe" | ForEach-Object {
-              Write-Host "Found python.exe at: $($_. FullName)"
-              $versionInfo = & $_.FullName --version 2>&1
-              Write-Host "  Version info: $versionInfo"
-            }
+            Get-ChildItem "C:\hostedtoolcache\windows\Python" -Recurse -ErrorAction SilentlyContinue | 
+              Select-Object FullName, Length, LastWriteTime | 
+              Format-Table -AutoSize
+          } else {
+            Write-Host "Python toolcache directory does not exist"
           }
+          
           Write-Host ""
-          Write-Host "PATH entries:" -ForegroundColor Yellow
-          $env:PATH -split ';' | Where-Object { $_ -match "python|tool" } | ForEach-Object {
-            Write-Host "  $_"
-          }
+          Write-Host "=== All Python executables ==="
+          Get-ChildItem "C:\hostedtoolcache\windows\Python" -Recurse -Filter "*. exe" -ErrorAction SilentlyContinue |
+            Select-Object FullName, Length |
+            Format-Table -AutoSize
       
       - name: Verify Python installation
+        if: steps.setup-python.outcome == 'success'
         shell: bash
-        continue-on-error: true
         run: |
-          echo "=== Python ${{ matrix.python-version }} Verification ==="
           echo "Python version:"
-          python --version || echo "FAILED"
+          python --version
           echo ""
           echo "Python executable location:"
-          which python || echo "FAILED"
+          which python
           echo ""
           echo "Python sys info:"
-          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys. version}')" || echo "FAILED"
+          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys.version}')"
           echo ""
           if [ "${{ matrix.python-version }}" == "3.14t" ]; then
             echo "Free-threading status:"
-            python -c "import sys; print(f'Free-threading enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"N/A\"}')" || echo "FAILED"
+            python -c "import sys; print(f'Free-threading enabled: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"N/A\"}')"
           fi
+      
+      - name: Report failure
+        if: steps.setup-python.outcome == 'failure'
+        run: |
+          echo "::error::Python ${{ matrix.python-version }} setup failed - check diagnostic output above"
+          exit 1
 
   test-x64-314-and-314t-together:
-    name: Test 3.14 and 3.14t together on Windows x64
+    name: Test 3. 14 and 3.14t together on Windows x64
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       
       - name: Setup Python 3. 14 and 3.14t
+        id: setup-python
+        continue-on-error: true
         uses: actions/setup-python@v6
         with:
           python-version: |
-            3.14
+            3. 14
             3.14t
           architecture: x64
           allow-prereleases: true
       
-      - name: Show folder contents after installation (x64)
-        shell: pwsh
+      - name: Inspect Python installation directory (always runs)
+        if: always()
+        shell: powershell
         run: |
-          Write-Host "=== X64 PYTHON INSTALLATION STRUCTURE ===" -ForegroundColor Green
+          Write-Host "=== Python Setup Status: ${{ steps.setup-python.outcome }} ==="
           Write-Host ""
+          Write-Host "=== Full hostedtoolcache directory structure ==="
           if (Test-Path "C:\hostedtoolcache\windows\Python") {
-            $toolCachePath = "C:\hostedtoolcache\windows\Python"
-            Get-ChildItem -Path $toolCachePath | ForEach-Object {
-              $versionDir = $_
-              Write-Host "📁 $($versionDir. Name)"
-              Get-ChildItem -Path $versionDir. FullName | ForEach-Object {
-                $archDir = $_
-                Write-Host "  📁 $($archDir.Name)"
-                Get-ChildItem -Path $archDir.FullName | ForEach-Object {
-                  $buildDir = $_
-                  Write-Host "    📁 $($buildDir. Name)"
-                  $pythonExe = Join-Path $buildDir. FullName "python.exe"
-                  if (Test-Path $pythonExe) {
-                    Write-Host "      ✓ python.exe [EXISTS]"
-                  } else {
-                    Write-Host "      ✗ python.exe [MISSING]"
-                  }
-                }
-              }
-            }
+            Get-ChildItem "C:\hostedtoolcache\windows\Python" -Recurse -ErrorAction SilentlyContinue | 
+              Select-Object FullName, Length, LastWriteTime | 
+              Format-Table -AutoSize
+          } else {
+            Write-Host "Python toolcache directory does not exist"
+          }
+          
+          Write-Host ""
+          Write-Host "=== All Python executables ==="
+          Get-ChildItem "C:\hostedtoolcache\windows\Python" -Recurse -Filter "python*.exe" -ErrorAction SilentlyContinue |
+            Select-Object FullName, Length |
+            Format-Table -AutoSize
+          
+          Write-Host ""
+          Write-Host "=== Architecture subdirectories ==="
+          if (Test-Path "C:\hostedtoolcache\windows\Python\3.14. 0") {
+            Get-ChildItem "C:\hostedtoolcache\windows\Python\3.14.0" -Directory -ErrorAction SilentlyContinue |
+              Select-Object Name, LastWriteTime |
+              Format-Table -AutoSize
           }
       
       - name: Verify Python installation
+        if: steps.setup-python.outcome == 'success'
         shell: bash
         run: |
-          echo "=== X64 PYTHON VERIFICATION ==="
           echo "Default Python version:"
           python --version
           echo ""
@@ -297,7 +305,7 @@ jobs:
           python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys.version}')"
           echo ""
           echo "=== Checking all installed Python versions ==="
-          for py in python3.14 python3.14t; do
+          for py in python3.14 python3. 14t; do
             echo ""
             echo "Testing $py:"
             if command -v $py &> /dev/null; then
@@ -310,6 +318,7 @@ jobs:
           done
       
       - name: Check what maturin can find
+        if: steps.setup-python.outcome == 'success'
         shell: bash
         run: |
           echo "=== Installing maturin ==="
@@ -317,42 +326,64 @@ jobs:
           echo ""
           echo "=== Maturin list-python output ==="
           maturin list-python || echo "maturin list-python failed"
+      
+      - name: Report failure
+        if: steps.setup-python.outcome == 'failure'
+        run: |
+          echo "::error::Python setup failed - check diagnostic output above"
+          exit 1
 
   test-x64-separated-jobs:
     name: Test 3.14 and 3.14t in separate jobs on Windows x64
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: ['3.14', '3.14t']
+        python-version: ['3. 14', '3.14t']
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup Python ${{ matrix. python-version }}
+      - name: Setup Python ${{ matrix.python-version }}
+        id: setup-python
+        continue-on-error: true
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
           allow-prereleases: true
       
-      - name: Show installation folder for x64 ${{ matrix.python-version }}
-        shell: pwsh
+      - name: Inspect Python installation directory (always runs)
+        if: always()
+        shell: powershell
         run: |
-          Write-Host "=== X64 PYTHON ${{ matrix.python-version }} INSTALLATION ===" -ForegroundColor Green
+          Write-Host "=== Python ${{ matrix.python-version }} Setup Status: ${{ steps.setup-python.outcome }} ==="
+          Write-Host ""
+          Write-Host "=== hostedtoolcache directory structure ==="
           if (Test-Path "C:\hostedtoolcache\windows\Python") {
-            Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Recurse -File -Filter "python.exe" | ForEach-Object {
-              Write-Host "Found: $($_.FullName)"
-              $versionInfo = & $_.FullName --version 2>&1
-              Write-Host "  Version: $versionInfo"
-            }
+            Get-ChildItem "C:\hostedtoolcache\windows\Python" -Recurse -ErrorAction SilentlyContinue | 
+              Select-Object FullName, Length, LastWriteTime | 
+              Format-Table -AutoSize
+          } else {
+            Write-Host "Python toolcache directory does not exist"
           }
+          
+          Write-Host ""
+          Write-Host "=== All Python executables ==="
+          Get-ChildItem "C:\hostedtoolcache\windows\Python" -Recurse -Filter "*. exe" -ErrorAction SilentlyContinue |
+            Select-Object FullName, Length |
+            Format-Table -AutoSize
       
       - name: Verify Python installation
+        if: steps.setup-python.outcome == 'success'
         shell: bash
         run: |
-          echo "=== X64 Python ${{ matrix.python-version }} Verification ==="
+          echo "Python version:"
           python --version
+          echo ""
+          echo "Python executable location:"
           which python
-          python -c "import sys; print(f'Executable: {sys. executable}'); print(f'Version: {sys.version}')"
+          echo ""
+          echo "Python sys info:"
+          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys.version}')"
           echo ""
           if [ "${{ matrix.python-version }}" == "3.14t" ]; then
             echo "Free-threading status:"
@@ -360,6 +391,7 @@ jobs:
           fi
       
       - name: Check what maturin can find
+        if: steps.setup-python. outcome == 'success'
         shell: bash
         run: |
           echo "=== Installing maturin ==="
@@ -367,3 +399,9 @@ jobs:
           echo ""
           echo "=== Maturin list-python output ==="
           maturin list-python || echo "maturin list-python failed"
+      
+      - name: Report failure
+        if: steps.setup-python.outcome == 'failure'
+        run: |
+          echo "::error::Python ${{ matrix.python-version }} setup failed - check diagnostic output above"
+          exit 1
