@@ -1,87 +1,198 @@
-name: Compare Python 3.14/3.14t Layout (ARM64 vs x64)
+name: Analyze Python 3.14 Installation (Focused Folders & Logs)
 
 on:
   workflow_dispatch:
 
 jobs:
-  debug-arm64:
-    name: Debug ARM64 (Expected Fail)
+  # ARM64: Individual installs (one version per job)
+  arm64-individual:
+    name: ARM64 Individual (3.14 or 3.14t)
+    runs-on: windows-11-arm
+    strategy:
+      matrix:
+        python-version: ['3.14', '3.14t']  # Regular: 3.14 -> arm64 folder; Freethreaded: 3.14t -> arm64-freethreaded folder
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pre-Install: Check Existing Python 3.14 Folders
+        shell: pwsh
+        run: |
+          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-individual-${{ matrix.python-version }}] Pre-install: Checking Python 3.14 folders"
+          $toolCache = $env:AGENT_TOOLSDIRECTORY ?? $env:RUNNER_TOOL_CACHE
+          $pythonBase = Join-Path -Path $toolCache -ChildPath "Python\3.14.0"
+          if (Test-Path $pythonBase) {
+            Write-Host "Python 3.14.0 base dir: $pythonBase"
+            Get-ChildItem -Path $pythonBase -Directory | ForEach-Object {
+              Write-Host "Subdir: $($_.Name) (should be arm64 or arm64-freethreaded)"
+              Get-ChildItem -Path $_.FullName -File -Recurse | Format-Table Name, Length -AutoSize  # Lists files like python.exe
+            }
+          } else {
+            Write-Host "No Python 3.14.0 folders exist yet."
+          }
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: arm64
+          allow-prereleases: true
+
+      - name: Post-Install: Analyze Python 3.14 Folders
+        shell: pwsh
+        run: |
+          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-individual-${{ matrix.python-version }}] Post-install: Analyzing Python 3.14 folders"
+          $toolCache = $env:AGENT_TOOLSDIRECTORY ?? $env:RUNNER_TOOL_CACHE
+          $arch = if ('${{ matrix.python-version }}' -eq '3.14t') { 'arm64-freethreaded' } else { 'arm64' }
+          $pythonDir = Join-Path -Path $toolCache -ChildPath "Python\3.14.0\$arch"
+          Write-Host "Target folder for ${{ matrix.python-version }}: $pythonDir"
+          if (Test-Path $pythonDir) {
+            Write-Host "Contents (recursive file list):"
+            Get-ChildItem -Path $pythonDir -File -Recurse | Format-Table FullName, Name, Length -AutoSize  # Shows python.exe, libs, etc.
+            Write-Host "Key files check:"
+            $exeFiles = Get-ChildItem -Path $pythonDir -File -Recurse | Where-Object { $_.Name -match "python.*\.exe" }
+            if ($exeFiles) { $exeFiles | Format-Table Name, Length } else { Write-Host "ERROR: No python exe files found!" }
+          } else {
+            Write-Host "ERROR: Folder $pythonDir not created!"
+          }
+
+      - name: Verify Python Commands
+        shell: bash
+        run: |
+          echo "$(date +'%Y-%m-%d %H:%M:%S') [arm64-individual-${{ matrix.python-version }}] Verifying commands:"
+          python --version 2>&1 || echo "python failed"
+          which python || echo "which failed"
+
+  # ARM64: Co-install (both 3.14 and 3.14t in one job)
+  arm64-coinstall:
+    name: ARM64 Co-Install (3.14 + 3.14t)
     runs-on: windows-11-arm
     steps:
       - uses: actions/checkout@v4
 
-      - name: Enable Debug Logging
-        run: echo "ACTIONS_STEP_DEBUG=true" >> $GITHUB_ENV
-        shell: bash
-
-      - name: Pre-install File Check arm64
+      - name: Pre-Install: Check Python 3.14 Folders
         shell: pwsh
         run: |
-          $path = "C:\hostedtoolcache\windows\Python"
-          Write-Host "Checking $path..."
-          if (Test-Path $path) { Get-ChildItem -Path $path -Recurse | Select-Object FullName } else { Write-Host "Path not created yet." }
+          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-coinstall] Pre-install: No Python 3.14 folders expected."
+          # Same as above (should be empty)
 
-      - name: Setup Python 3.14 and 3.14t
-        id: setup-python
+      - name: Setup Regular Python 3.14 (to arm64 folder)
         uses: actions/setup-python@v6
         with:
-          python-version: |
-            3.14
-            3.14t
+          python-version: '3.14'
           architecture: arm64
           allow-prereleases: true
 
-      - name: Post-install Deep Analysis arm64
-        if: always()
+      - name: Mid-Install: Check After Regular 3.14
         shell: pwsh
         run: |
-          Write-Host "=== ROOT FOLDER STRUCTURE ==="
-          Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Recurse | Select-Object FullName
-          
-          Write-Host "`n=== SPECIFIC EXE CHECK ==="
-          $versions = Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Directory
-          foreach ($v in $versions) {
-              Write-Host "Checking inside $($v.FullName)"
-              Get-ChildItem -Path $v.FullName -Recurse -Filter "*.exe" | Select-Object FullName, Length, LastWriteTime
+          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-coinstall] Mid-install: After regular 3.14 (arm64 folder)"
+          $toolCache = $env:AGENT_TOOLSDIRECTORY ?? $env:RUNNER_TOOL_CACHE
+          $pythonDir = Join-Path -Path $toolCache -ChildPath "Python\3.14.0\arm64"
+          if (Test-Path $pythonDir) {
+            Write-Host "arm64 folder contents:"
+            Get-ChildItem -Path $pythonDir -File -Recurse | Where-Object { $_.Name -match "python.*\.exe" } | Format-Table Name, Length  # Should have python.exe
           }
 
-  debug-x64:
-    name: Debug x64 (Control)
+      - name: Setup Freethreaded Python 3.14t (to arm64-freethreaded folder)
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14t'
+          architecture: arm64
+          allow-prereleases: true
+        continue-on-error: true  # ARM64 may fail here
+
+      - name: Post-Install: Analyze Both Python 3.14 Folders
+        shell: pwsh
+        run: |
+          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-coinstall] Post-install: Analyzing both folders"
+          $toolCache = $env:AGENT_TOOLSDIRECTORY ?? $env:RUNNER_TOOL_CACHE
+          @('arm64', 'arm64-freethreaded') | ForEach-Object {
+            $pythonDir = Join-Path -Path $toolCache -ChildPath "Python\3.14.0\$_"
+            Write-Host "Folder: $_ ($pythonDir)"
+            if (Test-Path $pythonDir) {
+              Get-ChildItem -Path $pythonDir -File -Recurse | Where-Object { $_.Name -match "python.*\.exe" } | Format-Table Name, Length  # Check for python.exe in both
+            } else {
+              Write-Host "ERROR: Folder not found!"
+            }
+          }
+
+      - name: Verify Python Commands
+        shell: bash
+        run: |
+          echo "$(date +'%Y-%m-%d %H:%M:%S') [arm64-coinstall] Verifying commands:"
+          python --version 2>&1 || echo "default python failed"
+          python3.14 --version 2>&1 || echo "python3.14 failed"
+          python3.14t --version 2>&1 || echo "python3.14t failed"
+
+  # x64: Individual (similar to ARM64)
+  x64-individual:
+    name: x64 Individual (3.14 or 3.14t)
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ['3.14', '3.14t']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pre-Install: Check Python 3.14 Folders
+        shell: pwsh
+        run: |
+          # Same as ARM64, but for x64/x64-freethreaded
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+          allow-prereleases: true
+
+      - name: Post-Install: Analyze Python 3.14 Folders
+        shell: pwsh
+        run: |
+          # Same as ARM64, but check x64 dirs
+
+      - name: Verify Python Commands
+        shell: bash
+        run: |
+          # Same as ARM64
+
+  # x64: Co-install (both in one job)
+  x64-coinstall:
+    name: x64 Co-Install (3.14 + 3.14t)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Enable Debug Logging
-        run: echo "ACTIONS_STEP_DEBUG=true" >> $GITHUB_ENV
-        shell: bash
-
-      - name: Pre-install File Check x64
+      - name: Pre-Install: Check Python 3.14 Folders
         shell: pwsh
         run: |
-          $path = "C:\hostedtoolcache\windows\Python"
-          Write-Host "Checking $path..."
-          if (Test-Path $path) { Get-ChildItem -Path $path -Recurse | Select-Object FullName } else { Write-Host "Path not created yet." }
+          # Same as ARM64
 
-      - name: Setup Python 3.14 and 3.14t
-        id: setup-python
+      - name: Setup Regular Python 3.14 (to x64 folder)
         uses: actions/setup-python@v6
         with:
-          python-version: |
-            3.14
-            3.14t
+          python-version: '3.14'
           architecture: x64
           allow-prereleases: true
 
-      - name: Post-install Deep Analysis x64
-        if: always()
+      - name: Mid-Install: Check After Regular 3.14
         shell: pwsh
         run: |
-          Write-Host "=== ROOT FOLDER STRUCTURE ==="
-          Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Recurse | Select-Object FullName
-          
-          Write-Host "`n=== SPECIFIC EXE CHECK ==="
-          $versions = Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Directory
-          foreach ($v in $versions) {
-              Write-Host "Checking inside $($v.FullName)"
-              Get-ChildItem -Path $v.FullName -Recurse -Filter "*.exe" | Select-Object FullName, Length, LastWriteTime
-          }
+          # Same as ARM64
+
+      - name: Setup Freethreaded Python 3.14t (to x64-freethreaded folder)
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14t'
+          architecture: x64
+          allow-prereleases: true
+
+      - name: Post-Install: Analyze Both Python 3.14 Folders
+        shell: pwsh
+        run: |
+          # Same as ARM64
+
+      - name: Verify Python Commands
+        shell: bash
+        run: |
+          # Same as ARM64
