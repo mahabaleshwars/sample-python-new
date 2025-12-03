@@ -1,180 +1,69 @@
-name: Analyze Python Installation (Folder Structure & Logs)
+name: Compare Python 3.14/3.14t Layout (ARM64 vs x64)
 
 on:
   workflow_dispatch:
 
 jobs:
-  # ARM64: Individual installs (separate jobs)
-  arm64-individual:
-    name: ARM64 Individual Installs
-    runs-on: windows-11-arm
-    strategy:
-      matrix:
-        python-version: ['3.14', '3.14t']
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Pre-Install Analysis (Environment & Folders)
-        shell: pwsh
-        run: |
-          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-individual-${{ matrix.python-version }}] Pre-install analysis:"
-          Write-Host "=== Environment Variables ==="
-          Get-ChildItem Env: | Where-Object { $_.Name -match "PYTHON|PATH|RUNNER|AGENT" } | Format-Table -AutoSize
-          Write-Host "=== Tool Cache Folder Structure ==="
-          $toolCache = $env:AGENT_TOOLSDIRECTORY ?? $env:RUNNER_TOOL_CACHE
-          if (Test-Path $toolCache) {
-            Get-ChildItem -Path $toolCache -Recurse -Directory | Where-Object { $_.FullName -match "Python" } | ForEach-Object {
-              Write-Host "Dir: $($_.FullName)"
-              Get-ChildItem -Path $_.FullName -File | Format-Table Name, Length -AutoSize
-            }
-          }
-          Write-Host "=== Registry Entries ==="
-          Get-ChildItem -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" -ErrorAction SilentlyContinue | Where-Object { $_.GetValue("DisplayName") -match "Python" } | ForEach-Object {
-            Write-Host "$($_.Name): $($_.GetValue('DisplayName')) - Version: $($_.GetValue('DisplayVersion'))"
-          }
-
-      - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: arm64
-          allow-prereleases: true
-
-      - name: Post-Install Analysis (Folders & Verification)
-        shell: pwsh
-        run: |
-          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-individual-${{ matrix.python-version }}] Post-install analysis:"
-          Write-Host "=== Updated Tool Cache Folder Structure ==="
-          $toolCache = $env:AGENT_TOOLSDIRECTORY ?? $env:RUNNER_TOOL_CACHE
-          $arch = if ('${{ matrix.python-version }}' -eq '3.14t') { 'arm64-freethreaded' } else { 'arm64' }
-          $pythonDir = Join-Path -Path $toolCache -ChildPath "Python\3.14.0\$arch"
-          if (Test-Path $pythonDir) {
-            Get-ChildItem -Path $pythonDir -Recurse -File | Format-Table FullName, Name, Length -AutoSize
-          } else {
-            Write-Host "ERROR: Python directory $pythonDir not found!"
-          }
-          Write-Host "=== Updated Registry ==="
-          Get-ChildItem -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" -ErrorAction SilentlyContinue | Where-Object { $_.GetValue("DisplayName") -match "Python" } | ForEach-Object {
-            Write-Host "$($_.Name): $($_.GetValue('DisplayName'))"
-          }
-          Write-Host "=== PATH Check ==="
-          ($env:PATH -split ';') | Where-Object { $_ -match "Python" } | ForEach-Object { Write-Host $_ }
-
-      - name: Command Verification
-        shell: bash
-        run: |
-          echo "$(date +'%Y-%m-%d %H:%M:%S') [arm64-individual-${{ matrix.python-version }}] Command verification:"
-          echo "=== python --version ==="
-          python --version 2>&1 || echo "FAILED"
-          echo "=== which python ==="
-          which python 2>&1 || echo "FAILED"
-          echo "=== python -c sys info ==="
-          python -c "import sys; print(f'Executable: {sys.executable}'); print(f'Version: {sys.version}')" 2>&1 || echo "FAILED"
-          if [ "${{ matrix.python-version }}" == "3.14t" ]; then
-            echo "=== Free-threading check ==="
-            python -c "import sys; print(f'Free-threading: {sys._is_gil_enabled() if hasattr(sys, \"_is_gil_enabled\") else \"N/A\"}')" 2>&1 || echo "FAILED"
-          fi
-
-  # ARM64: Co-install (both versions in one job)
-  arm64-coinstall:
-    name: ARM64 Co-Install Analysis
+  debug-arm64:
+    name: Debug ARM64 (Expected Fail)
     runs-on: windows-11-arm
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pre-Install Analysis
+      - name: Enable Debug Logging
+        run: echo "ACTIONS_STEP_DEBUG=true" >> $GITHUB_ENV
+        shell: bash
+
+      - name: [ARM64] Pre-install File Check
         shell: pwsh
         run: |
-          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-coinstall] Pre-install analysis:"
-          # Same as above (environment, folders, registry)
+          $path = "C:\hostedtoolcache\windows\Python"
+          Write-Host "Checking $path..."
+          if (Test-Path $path) { Get-ChildItem -Path $path -Recurse | Select-Object FullName } else { Write-Host "Path not created yet." }
 
-      - name: Setup Python 3.14 (Regular)
+      - name: Setup Python 3.14 and 3.14t
+        id: setup-python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.14'
+          python-version: |
+            3.14
+            3.14t
           architecture: arm64
           allow-prereleases: true
 
-      - name: Mid-Install Analysis (After Regular)
+      - name: [ARM64] Post-install Deep Analysis
+        if: always()
         shell: pwsh
         run: |
-          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-coinstall] Mid-install (after regular):"
-          # Log folders and registry after first install
+          Write-Host "=== ROOT FOLDER STRUCTURE ==="
+          Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Recurse | Select-Object FullName
+          
+          Write-Host "`n=== SPECIFIC EXE CHECK ==="
+          $versions = Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Directory
+          foreach ($v in $versions) {
+              Write-Host "Checking inside $($v.FullName)"
+              Get-ChildItem -Path $v.FullName -Recurse -Filter "*.exe" | Select-Object FullName, Length, LastWriteTime
+          }
 
-      - name: Setup Python 3.14t (Freethreaded)
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.14t'
-          architecture: arm64
-          allow-prereleases: true
-        continue-on-error: true  # Proceed even if fails
-
-      - name: Post-Install Analysis
-        shell: pwsh
-        run: |
-          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [arm64-coinstall] Post-install analysis:"
-          # Same as above, but check both dirs
-
-      - name: Command Verification
-        shell: bash
-        run: |
-          echo "$(date +'%Y-%m-%d %H:%M:%S') [arm64-coinstall] Command verification:"
-          echo "=== python --version (default) ==="
-          python --version 2>&1 || echo "FAILED"
-          echo "=== python3.14 --version ==="
-          python3.14 --version 2>&1 || echo "FAILED"
-          echo "=== python3.14t --version ==="
-          python3.14t --version 2>&1 || echo "FAILED"
-
-  # x64: Individual installs
-  x64-individual:
-    name: x64 Individual Installs
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        python-version: ['3.14', '3.14t']
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Pre-Install Analysis
-        shell: pwsh
-        run: |
-          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [x64-individual-${{ matrix.python-version }}] Pre-install analysis:"
-          # Same as ARM64
-
-      - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: x64
-          allow-prereleases: true
-
-      - name: Post-Install Analysis
-        shell: pwsh
-        run: |
-          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [x64-individual-${{ matrix.python-version }}] Post-install analysis:"
-          # Same as ARM64, but check x64 dirs
-
-      - name: Command Verification
-        shell: bash
-        run: |
-          echo "$(date +'%Y-%m-%d %H:%M:%S') [x64-individual-${{ matrix.python-version }}] Command verification:"
-          # Same as ARM64
-
-  # x64: Co-install
-  x64-coinstall:
-    name: x64 Co-Install Analysis
+  debug-x64:
+    name: Debug x64 (Control)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pre-Install Analysis
+      - name: Enable Debug Logging
+        run: echo "ACTIONS_STEP_DEBUG=true" >> $GITHUB_ENV
+        shell: bash
+
+      - name: [x64] Pre-install File Check
         shell: pwsh
         run: |
-          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [x64-coinstall] Pre-install analysis:"
-          # Same as ARM64
+          $path = "C:\hostedtoolcache\windows\Python"
+          Write-Host "Checking $path..."
+          if (Test-Path $path) { Get-ChildItem -Path $path -Recurse | Select-Object FullName } else { Write-Host "Path not created yet." }
 
-      - name: Setup Both Pythons
+      - name: Setup Python 3.14 and 3.14t
+        id: setup-python
         uses: actions/setup-python@v6
         with:
           python-version: |
@@ -183,14 +72,16 @@ jobs:
           architecture: x64
           allow-prereleases: true
 
-      - name: Post-Install Analysis
+      - name: [x64] Post-install Deep Analysis
+        if: always()
         shell: pwsh
         run: |
-          Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [x64-coinstall] Post-install analysis:"
-          # Same as ARM64
-
-      - name: Command Verification
-        shell: bash
-        run: |
-          echo "$(date +'%Y-%m-%d %H:%M:%S') [x64-coinstall] Command verification:"
-          # Same as ARM64
+          Write-Host "=== ROOT FOLDER STRUCTURE ==="
+          Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Recurse | Select-Object FullName
+          
+          Write-Host "`n=== SPECIFIC EXE CHECK ==="
+          $versions = Get-ChildItem -Path "C:\hostedtoolcache\windows\Python" -Directory
+          foreach ($v in $versions) {
+              Write-Host "Checking inside $($v.FullName)"
+              Get-ChildItem -Path $v.FullName -Recurse -Filter "*.exe" | Select-Object FullName, Length, LastWriteTime
+          }
