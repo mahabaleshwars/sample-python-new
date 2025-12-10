@@ -8,22 +8,21 @@
 name: Reproduce Issue 1255 - Multi-Arch Python Setup Bug
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:  
     inputs:
-      python_version:
+      python_version: 
         description: 'Python version to test'
         required: true
         default: '3.11'
         type: string
       debug_mode:
         description: 'Enable extra verbose logging'
-        required: false
-        default: true
+        required:  false
+        default:  true
         type: boolean
 
 env:
   PYTHON_VERSION: ${{ inputs.python_version || '3.11' }}
-  # Common tool cache location (adjust if your runner uses a different path)
   AGENT_TOOLSDIRECTORY: /opt/hostedtoolcache
 
 jobs:
@@ -32,19 +31,19 @@ jobs:
   # =============================================================================
   preflight-inspection:
     name: "🔍 Pre-flight:  Inspect Tool Cache State"
-    runs-on: self-hosted  # Must be self-hosted to reproduce
+    runs-on: self-hosted
     outputs:
       initial_state: ${{ steps.capture-initial. outputs.state }}
     steps:
       - name: "📋 Environment Information"
         run:  |
           echo "=============================================="
-          echo "🖥️  ENVIRONMENT DETAILS"
+          echo "🖥️ ENVIRONMENT DETAILS"
           echo "=============================================="
           echo "Hostname: $(hostname)"
           echo "OS: $(uname -a)"
           echo "Architecture: $(uname -m)"
-          echo "Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "Date:  $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           echo "Runner Name: ${{ runner.name }}"
           echo "Runner OS: ${{ runner. os }}"
           echo "Runner Arch: ${{ runner. arch }}"
@@ -53,7 +52,7 @@ jobs:
           echo "=============================================="
 
       - name: "📁 Capture Initial Tool Cache State"
-        id: capture-initial
+        id:  capture-initial
         run: |
           echo "=============================================="
           echo "📁 INITIAL TOOL CACHE STATE"
@@ -74,10 +73,9 @@ jobs:
             echo "📊 Detailed listing with permissions and sizes:"
             ls -laR "$PYTHON_CACHE" 2>/dev/null | head -100
           else
-            echo "⚠️  Python cache directory does not exist yet"
+            echo "⚠️ Python cache directory does not exist yet"
           fi
           
-          # Save state for comparison
           echo "state=captured" >> $GITHUB_OUTPUT
 
       - name: "🧹 Optional: Clean Python Cache for Fresh Test"
@@ -98,40 +96,39 @@ jobs:
             rm -rf "$VERSION_PATH"
             echo "✅ Cleaned successfully"
           else
-            echo "ℹ️  No existing installation found for Python ${{ env. PYTHON_VERSION }}"
+            echo "ℹ️ No existing installation found for Python ${{ env. PYTHON_VERSION }}"
           fi
 
   # =============================================================================
   # JOB 2: Matrix Job - Install Python for Multiple Architectures
-  # This is where the bug manifests - parallel installations conflict
   # =============================================================================
   matrix-python-setup:
     name:  "🐍 Setup Python - ${{ matrix.arch }}"
     needs: preflight-inspection
-    runs-on: self-hosted  # Must be self-hosted to reproduce
+    runs-on: self-hosted
     strategy:
-      fail-fast: false  # Continue all jobs even if one fails
-      max-parallel: 2   # Run in parallel to trigger the race condition
-      matrix: 
-        arch: [x64, arm64]  # Adjust based on your runner capabilities
+      fail-fast: false
+      max-parallel: 2
+      matrix:  
+        arch:  [x64, arm64]
     
-    steps: 
+    steps:  
       - name: "🏷️ Job Identification"
         run:  |
           echo "=============================================="
-          echo "🏷️  JOB:  Python Setup for ${{ matrix.arch }}"
+          echo "🏷️ JOB:  Python Setup for ${{ matrix.arch }}"
           echo "=============================================="
-          echo "Matrix Arch: ${{ matrix. arch }}"
+          echo "Matrix Arch: ${{ matrix.arch }}"
           echo "Job ID: ${{ github.job }}"
           echo "Run ID: ${{ github.run_id }}"
           echo "Run Attempt: ${{ github.run_attempt }}"
           echo "Start Time: $(date -u '+%Y-%m-%d %H:%M:%S. %3N UTC')"
 
       - name: "📸 BEFORE:  Snapshot Tool Cache State"
-        id: before-snapshot
+        id:  before-snapshot
         run: |
           echo "=============================================="
-          echo "📸 BEFORE SETUP-PYTHON:  Tool Cache Snapshot"
+          echo "📸 BEFORE SETUP-PYTHON: Tool Cache Snapshot"
           echo "=============================================="
           
           TOOLCACHE="${AGENT_TOOLSDIRECTORY:-/opt/hostedtoolcache}"
@@ -139,7 +136,239 @@ jobs:
           VERSION_PATH="$PYTHON_CACHE/${{ env.PYTHON_VERSION }}"
           
           echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S.%3N UTC')"
-          echo "Checking:  $VERSION_PATH"
+          echo "Checking: $VERSION_PATH"
           echo ""
           
-          if
+          if [ -d "$VERSION_PATH" ]; then
+            echo "📂 Version directory EXISTS"
+            echo "Contents:"
+            ls -la "$VERSION_PATH"
+            echo ""
+            echo "Architecture subdirectories:"
+            find "$VERSION_PATH" -maxdepth 1 -type d \( -name "*64*" -o -name "*arm*" \) 2>/dev/null || echo "None found"
+            echo ""
+            echo "📊 Directory checksums (for change detection):"
+            find "$VERSION_PATH" -type f -exec md5sum {} \; 2>/dev/null | head -20
+          else
+            echo "📂 Version directory DOES NOT EXIST"
+          fi
+          
+          if [ -d "$VERSION_PATH" ]; then
+            echo "before_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "before_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name:  "🐍 Setup Python ${{ env.PYTHON_VERSION }} for ${{ matrix.arch }}"
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:  
+          python-version: ${{ env.PYTHON_VERSION }}
+          architecture: ${{ matrix. arch }}
+        env:
+          ACTIONS_STEP_DEBUG: ${{ inputs.debug_mode }}
+
+      - name: "📸 AFTER: Snapshot Tool Cache State"
+        id: after-snapshot
+        run: |
+          echo "=============================================="
+          echo "📸 AFTER SETUP-PYTHON: Tool Cache Snapshot"
+          echo "=============================================="
+          
+          TOOLCACHE="${AGENT_TOOLSDIRECTORY:-/opt/hostedtoolcache}"
+          PYTHON_CACHE="$TOOLCACHE/Python"
+          VERSION_PATH="$PYTHON_CACHE/${{ env.PYTHON_VERSION }}"
+          ARCH_PATH="$VERSION_PATH/${{ matrix.arch }}"
+          
+          echo "Timestamp:  $(date -u '+%Y-%m-%d %H:%M:%S.%3N UTC')"
+          echo "Architecture:  ${{ matrix.arch }}"
+          echo "Python Path from Action: ${{ steps.setup-python. outputs.python-path }}"
+          echo "Python Version from Action: ${{ steps.setup-python. outputs.python-version }}"
+          echo ""
+          
+          echo "🔍 Checking Version Directory:  $VERSION_PATH"
+          if [ -d "$VERSION_PATH" ]; then
+            echo "✅ Version directory EXISTS"
+            echo ""
+            echo "📁 Full directory tree:"
+            find "$VERSION_PATH" -type d | sort
+            echo ""
+            echo "📋 Detailed contents:"
+            ls -laR "$VERSION_PATH"
+          else
+            echo "❌ Version directory DOES NOT EXIST - THIS IS THE BUG!"
+          fi
+          
+          echo ""
+          echo "🔍 Checking Architecture-Specific Directory: $ARCH_PATH"
+          if [ -d "$ARCH_PATH" ]; then
+            echo "✅ Architecture directory EXISTS"
+            ls -la "$ARCH_PATH"
+          else
+            echo "❌ Architecture directory DOES NOT EXIST"
+          fi
+          
+          if [ -d "$VERSION_PATH" ]; then
+            echo "after_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "after_exists=false" >> $GITHUB_OUTPUT
+          fi
+          
+          if [ -d "$ARCH_PATH" ]; then
+            echo "arch_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "arch_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: "✅ Verify Python Installation"
+        run: |
+          echo "=============================================="
+          echo "✅ PYTHON INSTALLATION VERIFICATION"
+          echo "=============================================="
+          
+          echo "Python executable: $(which python)"
+          echo "Python version: $(python --version)"
+          echo "Python path: $(python -c 'import sys; print(sys.executable)')"
+          echo "Python prefix: $(python -c 'import sys; print(sys.prefix)')"
+          echo ""
+          echo "Pip version: $(pip --version)"
+          
+      - name: "💤 Wait for Race Condition Window"
+        run: |
+          echo "Waiting 10 seconds to allow parallel job to potentially conflict..."
+          sleep 10
+
+      - name: "🔍 POST-WAIT: Check for Race Condition Damage"
+        run:  |
+          echo "=============================================="
+          echo "🔍 POST-WAIT: Checking for Race Condition"
+          echo "=============================================="
+          
+          TOOLCACHE="${AGENT_TOOLSDIRECTORY:-/opt/hostedtoolcache}"
+          PYTHON_CACHE="$TOOLCACHE/Python"
+          VERSION_PATH="$PYTHON_CACHE/${{ env. PYTHON_VERSION }}"
+          ARCH_PATH="$VERSION_PATH/${{ matrix.arch }}"
+          
+          echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S.%3N UTC')"
+          echo ""
+          
+          echo "🔍 Version Directory Status:"
+          if [ -d "$VERSION_PATH" ]; then
+            echo "✅ Still exists"
+            echo "Contents:"
+            ls -la "$VERSION_PATH"
+          else
+            echo "❌ DELETED!  Race condition bug confirmed!"
+          fi
+          
+          echo ""
+          echo "🔍 Architecture Directory Status (${{ matrix.arch }}):"
+          if [ -d "$ARCH_PATH" ]; then
+            echo "✅ Still exists"
+          else
+            echo "❌ DELETED! Our installation was removed!"
+          fi
+          
+          echo ""
+          echo "🔍 Python Executable Status:"
+          if python --version 2>/dev/null; then
+            echo "✅ Python still works"
+          else
+            echo "❌ Python broken - installation was corrupted!"
+          fi
+
+  # =============================================================================
+  # JOB 3: Post-Analysis - Compare final state and generate report
+  # =============================================================================
+  post-analysis:
+    name: "📊 Post-Analysis:  Generate Bug Report"
+    needs: matrix-python-setup
+    runs-on:  self-hosted
+    if: always()
+    
+    steps: 
+      - name: "📊 Final Tool Cache State Analysis"
+        run:  |
+          echo "=============================================="
+          echo "📊 FINAL ANALYSIS REPORT"
+          echo "=============================================="
+          echo "Report Generated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo ""
+          
+          TOOLCACHE="${AGENT_TOOLSDIRECTORY:-/opt/hostedtoolcache}"
+          PYTHON_CACHE="$TOOLCACHE/Python"
+          VERSION_PATH="$PYTHON_CACHE/${{ env. PYTHON_VERSION }}"
+          
+          echo "🔍 Final State of Python ${{ env. PYTHON_VERSION }}:"
+          echo "----------------------------------------------"
+          
+          if [ -d "$VERSION_PATH" ]; then
+            echo "✅ Version directory exists:  $VERSION_PATH"
+            echo ""
+            echo "📁 Architecture directories present:"
+            find "$VERSION_PATH" -maxdepth 1 -type d | grep -v "^$VERSION_PATH$" || echo "None found!"
+            echo ""
+            echo "📋 Complete directory structure:"
+            find "$VERSION_PATH" -type d | sort
+            echo ""
+            echo "📊 Space usage:"
+            du -sh "$VERSION_PATH"/* 2>/dev/null || echo "Cannot calculate"
+          else
+            echo "❌ Version directory MISSING:  $VERSION_PATH"
+            echo ""
+            echo "🐛 BUG CONFIRMED: The version directory was deleted!"
+            echo "   This indicates setup.sh is removing \$PYTHON_TOOLCACHE_VERSION_PATH"
+            echo "   instead of \$PYTHON_TOOLCACHE_VERSION_ARCH_PATH"
+          fi
+          
+          echo ""
+          echo "=============================================="
+          echo "📋 FULL PYTHON CACHE STRUCTURE"
+          echo "=============================================="
+          if [ -d "$PYTHON_CACHE" ]; then
+            find "$PYTHON_CACHE" -maxdepth 4 | sort
+          else
+            echo "Python cache directory does not exist"
+          fi
+
+      - name: "📝 Generate Structured Bug Report"
+        run: |
+          cat << 'EOF'
+          ==================================================
+          🐛 BUG REPRODUCTION REPORT: Issue #1255
+          ==================================================
+          
+          ISSUE SUMMARY: 
+          --------------
+          Title: Python setup.sh deleting major version directory 
+                 instead of architecture-specific directory
+          
+          EXPECTED BEHAVIOR:
+          ------------------
+          When running setup-python with multiple architectures in a matrix:
+          1. Each architecture should have its own subdirectory
+          2. Installing one architecture should NOT delete another
+          3. Final structure should be:
+             /opt/hostedtoolcache/Python/
+             └── 3.11/
+                 ├── x64/
+                 │   └── [python installation]
+                 └── arm64/
+                     └── [python installation]
+          
+          ACTUAL BEHAVIOR: 
+          ----------------
+          The setup.sh script deletes $PYTHON_TOOLCACHE_VERSION_PATH
+          (the entire version directory) instead of
+          $PYTHON_TOOLCACHE_VERSION_ARCH_PATH (architecture-specific).
+          
+          ROOT CAUSE LOCATION:
+          --------------------
+          File: setup.sh (in the Python build scripts)
+          
+          Buggy code pattern: 
+            rm -rf "$PYTHON_TOOLCACHE_VERSION_PATH"
+          
+          Should be:
+            rm -rf "$PYTHON_TOOLCACHE_VERSION_ARCH_PATH"
+          EOF
