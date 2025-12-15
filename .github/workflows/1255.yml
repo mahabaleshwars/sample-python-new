@@ -1,49 +1,25 @@
-name: Repro setup-python toolcache deletion across arch matrix
+name: Test Python Matrix Installation
+on:  workflow_dispatch
 
-on:
-  workflow_dispatch:
- 
 jobs:
-  repro:
+  install-python: 
     runs-on: self-hosted
     strategy:
-      fail-fast: false
-      max-parallel: 2
       matrix:
-        arch: [x64, arm64]        # adjust to the architectures your runners support
-        version: ['3.12.8']       # the Python version to install
-    env:
-      # Point this to a shared location used by your self-hosted runners.
-      # If your runner already sets RUNNER_TOOL_CACHE, you can omit this or leave it as-is.
-      RUNNER_TOOL_CACHE: /opt/hostedtoolcache
-
+        arch: [arm64, x64]
+        version: ['3.12. 8']
+     # max-parallel: 2  # Run in parallel to trigger the race condition
+    
     steps:
-      - name: Show runner and toolcache context
-        run: |
-          echo "Runner name: $RUNNER_NAME"
-          echo "Runner toolcache: ${RUNNER_TOOL_CACHE:-$AGENT_TOOLSDIRECTORY}"
-          echo "Matrix arch: ${{ matrix.arch }}"
-          echo "Python version: ${{ matrix.version }}"
-
-      - name: Setup Python
+      - name: Setup Python ${{ matrix.version }} (${{ matrix.arch }})
         uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.version }}
-          architecture: ${{ matrix.arch }}
-
-      - name: Inspect toolcache layout after install
+        with: 
+          python-version:  ${{ matrix.version }}
+          architecture:  ${{ matrix.arch }}
+      
+      - name:  Check folder structure
         run: |
-          TOOLCACHE="${RUNNER_TOOL_CACHE:-$AGENT_TOOLSDIRECTORY}"
-          echo "Listing toolcache directory:"
-          ls -la "$TOOLCACHE/Python"
-          echo "Listing version directory:"
-          ls -la "$TOOLCACHE/Python/${{ matrix.version }}"
-          echo "Listing arch-specific directory:"
-          # The arch-specific directory name may be normalized by the action (e.g., x64 vs arm64).
-          # List all to show what exists:
-          ls -la "$TOOLCACHE/Python/${{ matrix.version }}" || true
-
-      - name: Show which python was installed
-        run: |
-          which python
-          python --version
+          echo "=== Tool Cache Structure ==="
+          ls -laR $RUNNER_TOOL_CACHE/Python/ || echo "Python folder not found"
+          echo "=== Looking for architecture folders ==="
+          find $RUNNER_TOOL_CACHE/Python -type d -name "*" | head -50
