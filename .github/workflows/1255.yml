@@ -7,7 +7,7 @@ jobs:
     strategy:
       matrix:
         arch: [arm64, x64]
-        version: ['3.12. 8']
+        version: ['3.12.11']
      # max-parallel: 2  # Run in parallel to trigger the race condition
     
     steps:
