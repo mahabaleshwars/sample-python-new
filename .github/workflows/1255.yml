@@ -6,7 +6,7 @@ jobs:
     runs-on: self-hosted
     strategy:
       matrix:
-        arch: [arm64, x64]
+        arch: [x64, arm64]
         version: ['3.12.11']
      # max-parallel: 2  # Run in parallel to trigger the race condition
     
