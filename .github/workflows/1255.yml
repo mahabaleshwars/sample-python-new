@@ -5,6 +5,7 @@ jobs:
   install-python: 
     runs-on: ubuntu-22.04
     strategy:
+      fail-fast: false
       matrix:
         arch: [x64, arm64]
         version: ['3.12.11']
