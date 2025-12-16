@@ -3,12 +3,13 @@ on:  workflow_dispatch
 
 jobs:
   install-python: 
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         arch: [x64, x86]
         version: ['3.12.11', '3.12.8']
+        os: ['windows-latest', 'ubuntu-latest']
      # max-parallel: 2  # Run in parallel to trigger the race condition
     
     steps:
