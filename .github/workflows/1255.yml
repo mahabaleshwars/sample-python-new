@@ -3,7 +3,7 @@ on:  workflow_dispatch
 
 jobs:
   install-python: 
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         arch: [x64, arm64]
