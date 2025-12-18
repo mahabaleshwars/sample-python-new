@@ -3,7 +3,7 @@ on:  workflow_dispatch
 
 jobs: 
   test-both-architectures: 
-    runs-on:  macos-14
+    runs-on:  macos-latest
     steps:
       - name: Install Python arm64
         uses:  actions/setup-python@v6
