@@ -15,13 +15,24 @@ jobs:
         run: |
           echo "=== After arm64 install ==="
           ls -la $RUNNER_TOOL_CACHE/Python/3.12.8/ || echo "Folder not found"
+      - name:  Check folder structure
+        run: |
+          echo "=== Tool Cache Structure ==="
+          ls -laR $RUNNER_TOOL_CACHE/Python/ || echo "Python folder not found"
+          echo "=== Looking for architecture folders ==="
+          find $RUNNER_TOOL_CACHE/Python -type d -name "*" | head -50
       
       - name:  Install Python x64
         uses: actions/setup-python@v6
         with: 
           python-version: '3.12.8'
           architecture: x64
-      
+      - name:  Check folder structure
+        run: |
+          echo "=== Tool Cache Structure ==="
+          ls -laR $RUNNER_TOOL_CACHE/Python/ || echo "Python folder not found"
+          echo "=== Looking for architecture folders ==="
+          find $RUNNER_TOOL_CACHE/Python -type d -name "*" | head -50
       - name: Check after x64 install (arm64 should still exist)
         run: |
           echo "=== After x64 install ==="
