@@ -9,7 +9,7 @@ jobs:
       matrix:
         arch: [x64, arm64]
         version: ['3.12.8']
-        os: [ macos-latest, macos-14]
+        os: [ macos-14]
      # max-parallel: 2  # Run in parallel to trigger the race condition
     
     steps:
