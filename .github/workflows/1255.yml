@@ -1,27 +1,37 @@
-name: Test Python Matrix Installation
+name: Test Shared Cache Behavior
 on:  workflow_dispatch
 
-jobs:
-  install-python: 
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [x64, arm64]
-        version: ['3.12.8']
-        os: [ macos-14]
-     # max-parallel: 2  # Run in parallel to trigger the race condition
-    
+jobs: 
+  test-both-architectures: 
+    runs-on:  macos-14
     steps:
-      - name: Setup Python ${{ matrix.version }} (${{ matrix.arch }})
+      - name: Install Python arm64
+        uses:  actions/setup-python@v6
+        with: 
+          python-version:  '3.12.12'
+          architecture:  arm64
+      
+      - name: Check after arm64 install
+        run: |
+          echo "=== After arm64 install ==="
+          ls -la $RUNNER_TOOL_CACHE/Python/3.12.12/ || echo "Folder not found"
+      
+      - name:  Install Python x64
         uses: actions/setup-python@v6
         with: 
-          python-version:  ${{ matrix.version }}
-          architecture:  ${{ matrix.arch }}
+          python-version: '3.12.12'
+          architecture: x64
       
-      - name:  Check folder structure
+      - name: Check after x64 install (arm64 should still exist)
         run: |
-          echo "=== Tool Cache Structure ==="
-          ls -laR $RUNNER_TOOL_CACHE/Python/ || echo "Python folder not found"
-          echo "=== Looking for architecture folders ==="
-          find $RUNNER_TOOL_CACHE/Python -type d -name "*" | head -50
+          echo "=== After x64 install ==="
+          ls -la $RUNNER_TOOL_CACHE/Python/3.12.12/
+          echo ""
+          echo "Expected: Both arm64/ and x64/ folders should exist"
+          echo ""
+          if [ -d "$RUNNER_TOOL_CACHE/Python/3.12.12/arm64" ] && [ -d "$RUNNER_TOOL_CACHE/Python/3.12.12/x64" ]; then
+            echo "✅ SUCCESS: Both architecture folders exist!"
+          else
+            echo "❌ FAILURE: One or both architecture folders are missing!"
+            exit 1
+          fi
