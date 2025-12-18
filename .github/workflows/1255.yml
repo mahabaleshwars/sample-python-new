@@ -8,7 +8,7 @@ jobs:
       - name: Install Python arm64
         uses:  actions/setup-python@v6
         with: 
-          python-version:  '3.12.12'
+          python-version:  '3.12.8'
           architecture:  arm64
       
       - name: Check after arm64 install
@@ -19,17 +19,17 @@ jobs:
       - name:  Install Python x64
         uses: actions/setup-python@v6
         with: 
-          python-version: '3.12.12'
+          python-version: '3.12.8'
           architecture: x64
       
       - name: Check after x64 install (arm64 should still exist)
         run: |
           echo "=== After x64 install ==="
-          ls -la $RUNNER_TOOL_CACHE/Python/3.12.12/
+          ls -la $RUNNER_TOOL_CACHE/Python/3.12.8/
           echo ""
           echo "Expected: Both arm64/ and x64/ folders should exist"
           echo ""
-          if [ -d "$RUNNER_TOOL_CACHE/Python/3.12.12/arm64" ] && [ -d "$RUNNER_TOOL_CACHE/Python/3.12.12/x64" ]; then
+          if [ -d "$RUNNER_TOOL_CACHE/Python/3.12.8/arm64" ] && [ -d "$RUNNER_TOOL_CACHE/Python/3.12.8/x64" ]; then
             echo "✅ SUCCESS: Both architecture folders exist!"
           else
             echo "❌ FAILURE: One or both architecture folders are missing!"
