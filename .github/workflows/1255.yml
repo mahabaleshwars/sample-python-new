@@ -14,7 +14,7 @@ jobs:
       - name: Check after arm64 install
         run: |
           echo "=== After arm64 install ==="
-          ls -la $RUNNER_TOOL_CACHE/Python/3.12.12/ || echo "Folder not found"
+          ls -la $RUNNER_TOOL_CACHE/Python/3.12.8/ || echo "Folder not found"
       
       - name:  Install Python x64
         uses: actions/setup-python@v6
