@@ -1,0 +1,132 @@
+name:  Reproduce GLIBC Cache Issue
+
+on:
+  workflow_dispatch: 
+    inputs:
+      python_version:
+        description: 'Python version to test'
+        required: true
+        default: '3.13'
+      first_os:
+        description:  'First OS container to run'
+        required:  true
+        default:  'ubuntu: 24.04'
+      second_os: 
+        description: 'Second OS container to run'
+        required:  true
+        default:  'ubuntu:22.04'
+
+jobs:
+  # Job 1: Run on newer Ubuntu (caches Python compiled for GLIBC 2.38+)
+  cache-python-newer-os:
+    name: Cache Python on ${{ inputs.first_os }}
+    runs-on: self-hosted
+    container:
+      image:  ${{ inputs.first_os }}
+    steps:
+      - name: Install prerequisites
+        run: |
+          apt-get update
+          apt-get install -y curl lsb-release
+          
+      - name: Display OS Info
+        run: |
+          echo "OS:  $(lsb_release -d)"
+          echo "GLIBC version: $(ldd --version | head -n1)"
+          
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with: 
+          python-version:  ${{ inputs.python_version }}
+          
+      - name:  Verify Python works
+        run: |
+          python --version
+          python -c "import ssl; print('SSL module loaded successfully')"
+          
+      - name:  Show cache location
+        run: |
+          echo "Python location: $pythonLocation"
+          ls -la $pythonLocation || true
+
+  # Job 2: Run on older Ubuntu (uses cached Python - will fail)
+  use-cached-python-older-os: 
+    name: Use cached Python on ${{ inputs.second_os }}
+    runs-on: self-hosted
+    needs: cache-python-newer-os
+    container:
+      image:  ${{ inputs.second_os }}
+    steps:
+      - name: Install prerequisites
+        run: |
+          apt-get update
+          apt-get install -y curl lsb-release
+          
+      - name: Display OS Info
+        run: |
+          echo "OS:  $(lsb_release -d)"
+          echo "GLIBC version: $(ldd --version | head -n1)"
+          
+      - name: Setup Python (will use cache from first job)
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python_version }}
+          
+      - name: Verify Python works (THIS WILL LIKELY FAIL)
+        run: |
+          echo "Attempting to run Python..."
+          python --version
+          python -c "import ssl; print('SSL module loaded successfully')"
+          python -m pip install --upgrade pip
+
+  # Alternative: Test in reverse order
+  cache-python-older-os-reverse:
+    name:  "[Reverse] Cache Python on ${{ inputs. second_os }}"
+    runs-on: self-hosted
+    container:
+      image:  ${{ inputs.second_os }}
+    steps:
+      - name: Install prerequisites
+        run: |
+          apt-get update
+          apt-get install -y curl lsb-release
+          
+      - name: Display OS Info
+        run: |
+          echo "OS:  $(lsb_release -d)"
+          echo "GLIBC version: $(ldd --version | head -n1)"
+          
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with: 
+          python-version: ${{ inputs. python_version }}
+          
+      - name: Verify Python works
+        run: python --version
+
+  use-cached-python-newer-os-reverse: 
+    name: "[Reverse] Use cached Python on ${{ inputs.first_os }}"
+    runs-on: self-hosted
+    needs: cache-python-older-os-reverse
+    container: 
+      image: ${{ inputs.first_os }}
+    steps:
+      - name: Install prerequisites
+        run: |
+          apt-get update
+          apt-get install -y curl lsb-release
+          
+      - name:  Display OS Info
+        run: |
+          echo "OS: $(lsb_release -d)"
+          echo "GLIBC version: $(ldd --version | head -n1)"
+          
+      - name: Setup Python (will use cache from previous job)
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python_version }}
+          
+      - name:  Verify Python works (THIS WILL LIKELY FAIL - SSL issues)
+        run: |
+          python --version
+          python -c "import ssl; print('SSL module loaded successfully')"
