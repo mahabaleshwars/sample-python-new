@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
 
 env:
-  PYTHON_VERSION_UNSTABLE: "3.14.1" # adjust if needed; any version that is present for both OS images works
+  PYTHON_VERSION_UNSTABLE: "3.13.10"
   # IMPORTANT: Keep this label set to a runner that is a single machine to force cache reuse.
-  RUNNER_LABELS: "[self-hosted, linux, x64, glibc-repro]"
+  RUNNER_LABELS: '["self-hosted","linux","x64","glibc-repro"]'
 
 jobs:
   prime-cache-ubuntu-24:
