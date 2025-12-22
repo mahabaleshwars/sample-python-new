@@ -1,89 +1,53 @@
-name:  Reproduce GLIBC Cache Issue (Issue 1261)
+name: Repro GLIBC cache mismatch on self-hosted
 
 on:
-  workflow_dispatch: 
-    inputs:
-      python_version: 
-        description: 'Python version to test'
-        required: true
-        default: '3.14.1'
+  workflow_dispatch:
 
-jobs: 
-  # Job 1: Setup Python and cache it
-  setup-and-cache-python: 
-    name: Setup Python ${{ inputs.python_version }}
-    runs-on: self-hosted
-    steps: 
-      - name:  Display OS and GLIBC Info
-        run: |
-          echo "=== System Information ==="
-          cat /etc/os-release
-          echo ""
-          echo "GLIBC version: $(ldd --version | head -n1)"
-          echo "Architecture: $(uname -m)"
-          echo "Tool cache:  $RUNNER_TOOL_CACHE"
-          
-      - name: Clear Python cache (to force fresh download)
-        run: |
-          echo "Clearing cached Python ${{ inputs.python_version }}..."
-          rm -rf "$RUNNER_TOOL_CACHE/Python/${{ inputs.python_version }}*" || true
-          echo "Cache cleared"
-          
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with: 
-          python-version:  ${{ inputs.python_version }}
-          
-      - name:  Verify Python installation
-        run: |
-          echo "=== Python Information ==="
-          echo "Python location: $pythonLocation"
-          python --version
-          python -c "import sys; print(f'Executable: {sys.executable}')"
-          python -c "import ssl; print(f'SSL version:  {ssl.OPENSSL_VERSION}')"
-          
-      - name: Check GLIBC requirements of Python binary
-        run: |
-          echo "=== GLIBC Requirements ==="
-          ldd "$pythonLocation/bin/python3" 2>/dev/null || ldd "$pythonLocation/python" 2>/dev/null || echo "Could not check ldd"
-          
-      - name: Test pip
-        run: |
-          python -m pip --version
-          python -m pip install --upgrade pip
+env:
+  PYTHON_VERSION_UNSTABLE: "3.14.1" # adjust if needed; any version that is present for both OS images works
+  # IMPORTANT: Keep this label set to a runner that is a single machine to force cache reuse.
+  RUNNER_LABELS: "[self-hosted, linux, x64, glibc-repro]"
 
-  # Job 2: Use cached Python (run multiple times to catch intermittent failures)
-  use-cached-python:
-    name: Use cached Python (Run ${{ matrix.run }})
-    runs-on: self-hosted
-    needs: setup-and-cache-python
-    strategy:
-      fail-fast: false
-      matrix:
-        run:  [1, 2, 3]
+jobs:
+  prime-cache-ubuntu-24:
+    name: Prime cache on ubuntu:24.04
+    runs-on: ${{ fromJson(env.RUNNER_LABELS) }}
+    container:
+      image: ubuntu:24.04
     steps:
-      - name: Display OS and GLIBC Info
+      - uses: actions/checkout@v5
+      - name: Show container OS
         run: |
-          echo "=== System Information (Run ${{ matrix. run }}) ==="
           cat /etc/os-release
-          echo ""
-          echo "GLIBC version: $(ldd --version | head -n1)"
-          
-      - name: Setup Python (should use cache)
+          ldd --version || true
+      - name: Setup Python (prime cache on 24.04)
         uses: actions/setup-python@v6
-        with: 
-          python-version:  ${{ inputs.python_version }}
-          
-      - name: Verify Python works
-        run: |
-          echo "=== Verification (Run ${{ matrix. run }}) ==="
+        with:
+          python-version: ${{ env.PYTHON_VERSION_UNSTABLE }}
+          check-latest: false
+      - run: |
           python --version
-          python -c "import ssl; print(f'SSL module:  OK - {ssl.OPENSSL_VERSION}')"
-          python -c "import hashlib; print('hashlib module:  OK')"
-          
-      - name: Test pip operations
+          python -c "import sys; print(sys.executable)"
+
+  reproduce-on-ubuntu-20:
+    name: Reuse cache on ubuntu:20.04 (should fail)
+    runs-on: ${{ fromJson(env.RUNNER_LABELS) }}
+    needs: prime-cache-ubuntu-24
+    container:
+      image: ubuntu:20.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Show container OS
         run: |
-          python -m pip --version
-          python -m pip install --upgrade pip
-          python -m pip install requests --quiet
-          python -c "import requests; print(f'requests installed: {requests.__version__}')"
+          cat /etc/os-release
+          ldd --version || true
+      - name: Setup Python (reuses cached 24.04 build)
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION_UNSTABLE }}
+          check-latest: false
+      - name: Run Python (expected GLIBC failure)
+        run: |
+          set -x
+          python --version
+          python -c "print('hello from', __import__('platform').platform())"
