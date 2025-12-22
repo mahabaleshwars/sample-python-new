@@ -1,132 +1,89 @@
-name:  Reproduce GLIBC Cache Issue
+name:  Reproduce GLIBC Cache Issue (Issue 1261)
 
 on:
   workflow_dispatch: 
     inputs:
-      python_version:
+      python_version: 
         description: 'Python version to test'
         required: true
-        default: '3.13'
-      first_os:
-        description:  'First OS container to run'
-        required:  true
-        default:  'ubuntu: 24.04'
-      second_os: 
-        description: 'Second OS container to run'
-        required:  true
-        default:  'ubuntu:22.04'
+        default: '3.14.1'
 
-jobs:
-  # Job 1: Run on newer Ubuntu (caches Python compiled for GLIBC 2.38+)
-  cache-python-newer-os:
-    name: Cache Python on ${{ inputs.first_os }}
+jobs: 
+  # Job 1: Setup Python and cache it
+  setup-and-cache-python: 
+    name: Setup Python ${{ inputs.python_version }}
     runs-on: self-hosted
-    container:
-      image:  ${{ inputs.first_os }}
-    steps:
-      - name: Install prerequisites
+    steps: 
+      - name:  Display OS and GLIBC Info
         run: |
-          apt-get update
-          apt-get install -y curl lsb-release
-          
-      - name: Display OS Info
-        run: |
-          echo "OS:  $(lsb_release -d)"
+          echo "=== System Information ==="
+          cat /etc/os-release
+          echo ""
           echo "GLIBC version: $(ldd --version | head -n1)"
+          echo "Architecture: $(uname -m)"
+          echo "Tool cache:  $RUNNER_TOOL_CACHE"
+          
+      - name: Clear Python cache (to force fresh download)
+        run: |
+          echo "Clearing cached Python ${{ inputs.python_version }}..."
+          rm -rf "$RUNNER_TOOL_CACHE/Python/${{ inputs.python_version }}*" || true
+          echo "Cache cleared"
           
       - name: Setup Python
         uses: actions/setup-python@v6
         with: 
           python-version:  ${{ inputs.python_version }}
           
-      - name:  Verify Python works
+      - name:  Verify Python installation
         run: |
-          python --version
-          python -c "import ssl; print('SSL module loaded successfully')"
-          
-      - name:  Show cache location
-        run: |
+          echo "=== Python Information ==="
           echo "Python location: $pythonLocation"
-          ls -la $pythonLocation || true
-
-  # Job 2: Run on older Ubuntu (uses cached Python - will fail)
-  use-cached-python-older-os: 
-    name: Use cached Python on ${{ inputs.second_os }}
-    runs-on: self-hosted
-    needs: cache-python-newer-os
-    container:
-      image:  ${{ inputs.second_os }}
-    steps:
-      - name: Install prerequisites
-        run: |
-          apt-get update
-          apt-get install -y curl lsb-release
-          
-      - name: Display OS Info
-        run: |
-          echo "OS:  $(lsb_release -d)"
-          echo "GLIBC version: $(ldd --version | head -n1)"
-          
-      - name: Setup Python (will use cache from first job)
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ inputs.python_version }}
-          
-      - name: Verify Python works (THIS WILL LIKELY FAIL)
-        run: |
-          echo "Attempting to run Python..."
           python --version
-          python -c "import ssl; print('SSL module loaded successfully')"
+          python -c "import sys; print(f'Executable: {sys.executable}')"
+          python -c "import ssl; print(f'SSL version:  {ssl.OPENSSL_VERSION}')"
+          
+      - name: Check GLIBC requirements of Python binary
+        run: |
+          echo "=== GLIBC Requirements ==="
+          ldd "$pythonLocation/bin/python3" 2>/dev/null || ldd "$pythonLocation/python" 2>/dev/null || echo "Could not check ldd"
+          
+      - name: Test pip
+        run: |
+          python -m pip --version
           python -m pip install --upgrade pip
 
-  # Alternative: Test in reverse order
-  cache-python-older-os-reverse:
-    name:  "[Reverse] Cache Python on ${{ inputs. second_os }}"
+  # Job 2: Use cached Python (run multiple times to catch intermittent failures)
+  use-cached-python:
+    name: Use cached Python (Run ${{ matrix.run }})
     runs-on: self-hosted
-    container:
-      image:  ${{ inputs.second_os }}
+    needs: setup-and-cache-python
+    strategy:
+      fail-fast: false
+      matrix:
+        run:  [1, 2, 3]
     steps:
-      - name: Install prerequisites
+      - name: Display OS and GLIBC Info
         run: |
-          apt-get update
-          apt-get install -y curl lsb-release
-          
-      - name: Display OS Info
-        run: |
-          echo "OS:  $(lsb_release -d)"
+          echo "=== System Information (Run ${{ matrix. run }}) ==="
+          cat /etc/os-release
+          echo ""
           echo "GLIBC version: $(ldd --version | head -n1)"
           
-      - name: Setup Python
+      - name: Setup Python (should use cache)
         uses: actions/setup-python@v6
         with: 
-          python-version: ${{ inputs. python_version }}
+          python-version:  ${{ inputs.python_version }}
           
       - name: Verify Python works
-        run: python --version
-
-  use-cached-python-newer-os-reverse: 
-    name: "[Reverse] Use cached Python on ${{ inputs.first_os }}"
-    runs-on: self-hosted
-    needs: cache-python-older-os-reverse
-    container: 
-      image: ${{ inputs.first_os }}
-    steps:
-      - name: Install prerequisites
         run: |
-          apt-get update
-          apt-get install -y curl lsb-release
-          
-      - name:  Display OS Info
-        run: |
-          echo "OS: $(lsb_release -d)"
-          echo "GLIBC version: $(ldd --version | head -n1)"
-          
-      - name: Setup Python (will use cache from previous job)
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ inputs.python_version }}
-          
-      - name:  Verify Python works (THIS WILL LIKELY FAIL - SSL issues)
-        run: |
+          echo "=== Verification (Run ${{ matrix. run }}) ==="
           python --version
-          python -c "import ssl; print('SSL module loaded successfully')"
+          python -c "import ssl; print(f'SSL module:  OK - {ssl.OPENSSL_VERSION}')"
+          python -c "import hashlib; print('hashlib module:  OK')"
+          
+      - name: Test pip operations
+        run: |
+          python -m pip --version
+          python -m pip install --upgrade pip
+          python -m pip install requests --quiet
+          python -c "import requests; print(f'requests installed: {requests.__version__}')"
