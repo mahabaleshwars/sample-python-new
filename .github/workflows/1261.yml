@@ -65,7 +65,7 @@ jobs:
     needs: ubuntu-20-04
     runs-on:  [self-hosted]
     container: 
-      image: ubuntu: 24.04
+      image: ubuntu:24.04
     name: Run inside Ubuntu 24.04 container
     steps: 
       - name:  Checkout repository
