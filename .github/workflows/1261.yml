@@ -1,13 +1,13 @@
 name: Python(20 -> 24) caching AGENT_TOOLSDIRECTORY
 
 on:
-  workflow_dispatch:
-jobs: 
+  workflow_dispatch: 
+jobs:
   install-docker:
     runs-on: [self-hosted]
     name: Install Docker on self-hosted runner
     steps:
-      - name:  Check and Install Docker
+      - name: Check and Install Docker
         run:  |
           if ! command -v docker &> /dev/null; then
             echo "Docker not found, installing..."
@@ -22,14 +22,14 @@ jobs:
             docker --version
           fi
 
-      - name:  Verify Docker is running
+      - name: Verify Docker is running
         run:  |
           sudo systemctl status docker --no-pager
           docker info
 
   ubuntu-20-04:
     needs: install-docker
-    runs-on: [self-hosted]
+    runs-on:  [self-hosted]
     container:
       image:  ubuntu:20.04
     name: Run inside Ubuntu 20.04 container
@@ -55,14 +55,14 @@ jobs:
         with: 
           python-version: 3.14.1
 
-      - name: Verify Python Version
-        run:  |
-          echo "Python: $(python --version)"
+      - name:  Verify Python Version
+        run: |
+          echo "Python:  $(python --version)"
           echo "OS:"
           cat /etc/os-release
 
   ubuntu-24-04:
-    needs: ubuntu-20-04
+    needs:  ubuntu-20-04
     runs-on:  [self-hosted]
     container: 
       image: ubuntu:24.04
@@ -82,13 +82,13 @@ jobs:
       - name:  Set up Python 3.14.1
         uses: actions/setup-python@v5
         with: 
-          python-version: 3.14.1
-      
-      - name:  Upgrade pip
-        run: python -m pip install --upgrade pip
+          python-version:  3.14.1
 
-      - name:  Verify Python Version
+      - name: Upgrade pip
+        run:  python -m pip install --upgrade pip
+
+      - name: Verify Python Version
         run: |
-          echo "Python:  $(python --version)"
+          echo "Python: $(python --version)"
           echo "OS:"
           cat /etc/os-release
