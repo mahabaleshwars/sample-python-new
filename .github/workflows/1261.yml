@@ -28,8 +28,8 @@ jobs:
           docker info
 
   ubuntu-20-04:
-    needs: ubuntu-latest
-    runs-on:  [self-hosted]
+    needs: install-docker
+    runs-on:  [ubuntu-latest]
     container:
       image:  ubuntu:20.04
     name: Run inside Ubuntu 20.04 container
@@ -63,7 +63,7 @@ jobs:
 
   ubuntu-24-04:
     needs:  ubuntu-20-04
-    runs-on:  [self-hosted]
+    runs-on:  [ubuntu-latest]
     container: 
       image: ubuntu:24.04
     name: Run inside Ubuntu 24.04 container
