@@ -4,7 +4,7 @@ on:
   workflow_dispatch: 
 jobs:
   install-docker:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     name: Install Docker on self-hosted runner
     steps:
       - name: Check and Install Docker
@@ -28,7 +28,7 @@ jobs:
           docker info
 
   ubuntu-20-04:
-    needs: install-docker
+    needs: ubuntu-latest
     runs-on:  [self-hosted]
     container:
       image:  ubuntu:20.04
