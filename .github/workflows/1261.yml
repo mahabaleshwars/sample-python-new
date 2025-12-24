@@ -45,10 +45,10 @@ jobs:
           apt-get update
           apt-get install -y curl build-essential libssl-dev libffi-dev python3-pip lsb-release
 
-      - name:  Fix pip cache permissions
-        run: |
-          mkdir -p /github/home/.cache/pip
-          chown -R $(whoami) /github/home/. cache
+      # - name:  Fix pip cache permissions
+      #   run: |
+      #     mkdir -p /github/home/.cache/pip
+      #     chown -R $(whoami) /github/home/. cache
 
       - name: Set up Python 3.14.1
         uses: actions/setup-python@v5
