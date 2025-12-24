@@ -3,32 +3,32 @@ name: Python(20 -> 24) caching AGENT_TOOLSDIRECTORY
 on:
   workflow_dispatch: 
 jobs:
-  install-docker:
-    runs-on: ubuntu-latest
-    name: Install Docker on self-hosted runner
-    steps:
-      - name: Check and Install Docker
-        run:  |
-          if ! command -v docker &> /dev/null; then
-            echo "Docker not found, installing..."
-            sudo apt-get update
-            sudo apt-get install -y docker. io
-            sudo systemctl start docker
-            sudo systemctl enable docker
-            sudo usermod -aG docker $USER
-            echo "Docker installed successfully"
-          else
-            echo "Docker is already installed"
-            docker --version
-          fi
+  # install-docker:
+  #   runs-on: ubuntu-latest
+  #   name: Install Docker on self-hosted runner
+  #   steps:
+  #     - name: Check and Install Docker
+  #       run:  |
+  #         if ! command -v docker &> /dev/null; then
+  #           echo "Docker not found, installing..."
+  #           sudo apt-get update
+  #           sudo apt-get install -y docker. io
+  #           sudo systemctl start docker
+  #           sudo systemctl enable docker
+  #           sudo usermod -aG docker $USER
+  #           echo "Docker installed successfully"
+  #         else
+  #           echo "Docker is already installed"
+  #           docker --version
+  #         fi
 
-      - name: Verify Docker is running
-        run:  |
-          sudo systemctl status docker --no-pager
-          docker info
+  #     - name: Verify Docker is running
+  #       run:  |
+  #         sudo systemctl status docker --no-pager
+  #         docker info
 
   ubuntu-20-04:
-    needs: install-docker
+    # needs: install-docker
     runs-on:  [ubuntu-latest]
     container:
       image:  ubuntu:20.04
