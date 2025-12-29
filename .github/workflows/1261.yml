@@ -33,29 +33,49 @@ jobs:
             $SUDO apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
           fi
 
-      - name: Start Docker daemon (with fallback and logs)
+      - name: Start Docker daemon (no double-start, handles stale pid)
         env:
           SUDO: ${{ env.SUDO }}
         run: |
           set -euo pipefail
 
-          start_docker() {
-            if command -v systemctl >/dev/null 2>&1; then
-              $SUDO systemctl start docker || true
-            fi
-            $SUDO service docker start || true
+          # 1) Try systemd/service once
+          SVC_STARTED=0
+          if command -v systemctl >/dev/null 2>&1; then
+            $SUDO systemctl start docker && SVC_STARTED=1 || true
+          fi
+          if [ $SVC_STARTED -eq 0 ]; then
+            $SUDO service docker start && SVC_STARTED=1 || true
+          fi
 
-            if ! docker info >/dev/null 2>&1; then
-              echo "Starting dockerd manually..."
-              $SUDO nohup dockerd --host=unix:///var/run/docker.sock > /tmp/dockerd.log 2>&1 &
-            fi
-          }
-
-          start_docker
-
-          for i in {1..60}; do
+          # 2) Wait for Docker socket up (90s)
+          for i in {1..90}; do
             if docker info >/dev/null 2>&1; then
-              echo "Docker is up"
+              echo "Docker is up via service/systemd"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "Service start did not bring Docker up; checking docker.pid"
+          if [ -f /var/run/docker.pid ]; then
+            PID=$(cat /var/run/docker.pid || true)
+            if [ -n "$PID" ] && ps -p "$PID" >/dev/null 2>&1; then
+              echo "dockerd running (pid $PID) but not responding; failing early"
+              exit 1
+            else
+              echo "Stale /var/run/docker.pid found; removing"
+              $SUDO rm -f /var/run/docker.pid
+            fi
+          fi
+
+          # 3) Fallback: start dockerd manually (single instance)
+          echo "Starting dockerd manually..."
+          $SUDO nohup dockerd --host=unix:///var/run/docker.sock > /tmp/dockerd.log 2>&1 &
+
+          for i in {1..90}; do
+            if docker info >/dev/null 2>&1; then
+              echo "Docker is up via manual dockerd"
               exit 0
             fi
             sleep 1
