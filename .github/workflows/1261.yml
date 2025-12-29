@@ -1,170 +1,54 @@
-name:  Reproduce GLIBC Issue with setup-python
+name: Test OS-Specific Python Caching by Docker (Reverse Order)
 
 on:
   workflow_dispatch:
 
 jobs:
-  # Job to check GLIBC version on the runner
-  check-glibc: 
-    name: Check GLIBC Version
-    runs-on: self-hosted  # Change to self-hosted for actual reproduction
-    # For :  runs-on: [self-hosted, Linux, X64]
-    outputs:
-      glibc_version: ${{ steps.glibc. outputs.version }}
-    steps: 
-      - name:  Get GLIBC version
-        id: glibc
+  ubuntu-24-04:
+    runs-on: [self-hosted]
+    container:
+      image: ubuntu:24.04
+    name: Run inside Ubuntu 24.04 container
+    steps:
+      - name: Install deps
         run: |
-          GLIBC_VERSION=$(ldd --version | head -n1 | grep -oP '\d+\.\d+$')
-          echo "version=$GLIBC_VERSION" >> $GITHUB_OUTPUT
-          echo "GLIBC version on this runner: $GLIBC_VERSION"
-
-      - name: Check libc details
-        run: |
-          echo "=== libc.so.6 details ==="
-          ls -la /lib/x86_64-linux-gnu/libc.so.6 || ls -la /lib64/libc.so.6 || echo "libc not found in expected locations"
-
-          echo "=== libm.so.6 details ==="
-          ls -la /lib/x86_64-linux-gnu/libm.so.6 || ls -la /lib64/libm.so.6 || echo "libm not found in expected locations"
-
-          echo "=== Available GLIBC versions ==="
-          strings /lib/x86_64-linux-gnu/libc. so.6 2>/dev/null | grep -E '^GLIBC_[0-9]' | sort -V | uniq || echo "Could not determine GLIBC versions"
-
-  # Multiple parallel jobs to catch intermittent failures
-  reproduce-issue: 
-    name: Test Python Setup - Run ${{ matrix.run_id }}
-    runs-on: ubuntu-22.04  # Change to self-hosted for actual reproduction
-    # For self-hosted:  runs-on: [self-hosted, Linux, X64]
-    needs: check-glibc
-    strategy:
-      fail-fast: false
-      matrix:
-        run_id: [1, 2, 3, 4, 5]
-    steps: 
-      - name: Pre-setup - Check tool cache
-        run:  |
-          echo "=== Checking existing tool cache ==="
-          TOOL_CACHE="${RUNNER_TOOL_CACHE:-/opt/hostedtoolcache}"
-          echo "Tool cache location: $TOOL_CACHE"
-
-          if [ -d "$TOOL_CACHE/Python" ]; then
-            echo "Cached Python versions:"
-            ls -la "$TOOL_CACHE/Python/" || echo "No Python versions cached"
-          else
-            echo "No Python cache directory found"
-          fi
-
-      - name:  Record runner info
-        run:  |
-          echo "=== Runner Information ==="
-          echo "Runner name: $RUNNER_NAME"
-          echo "Runner OS: $RUNNER_OS"
-          echo "Hostname: $(hostname)"
-          echo "GLIBC version:  ${{ needs.check-glibc. outputs.glibc_version }}"
-          uname -a
-          cat /etc/os-release
-
-      - name: Set up Python 3.10
-        id: setup-python
+          apt-get update
+          apt-get install -y curl build-essential libssl-dev libffi-dev python3-pip lsb-release
+      - name: Set up Python 3.8
         uses: actions/setup-python@v5
-        with: 
-          python-version:  '3.10'
+        with:
+          python-version: 3.8
 
-      - name:  Verify Python installation source
+      - name: Verify Python Version
         run: |
-          echo "=== Python Setup Details ==="
-          echo "Python path: ${{ steps.setup-python.outputs.python-path }}"
-          echo "Python version: ${{ steps.setup-python.outputs.python-version }}"
-          echo "Cache hit: ${{ steps. setup-python.outputs.cache-hit }}"
-
-      - name: Check Python binary GLIBC requirements
+          echo "Python: $(python --version)"
+          echo "OS:"
+          cat /etc/os-release
+  ubuntu-20-04:
+    needs: ubuntu-24-04
+    runs-on: [self-hosted]
+    container:
+      image: ubuntu:20.04
+    name: Run inside Ubuntu 20.04 container
+    steps:
+      - name: Install deps
         run: |
-          PYTHON_PATH="${{ steps.setup-python.outputs.python-path }}"
-          PYTHON_DIR=$(dirname "$PYTHON_PATH")
-
-          echo "=== Python binary location ==="
-          ls -la "$PYTHON_PATH"
-          file "$PYTHON_PATH"
-
-          echo "=== Checking GLIBC requirements of Python binary ==="
-          objdump -T "$PYTHON_PATH" 2>/dev/null | grep GLIBC | head -20 || echo "objdump not available or failed"
-
-          echo "=== Checking libpython shared library ==="
-          LIBPYTHON=$(find "$PYTHON_DIR/../lib" -name "libpython*. so*" 2>/dev/null | head -1)
-          if [ -n "$LIBPYTHON" ]; then
-            echo "Found:  $LIBPYTHON"
-            objdump -T "$LIBPYTHON" 2>/dev/null | grep GLIBC | head -20 || echo "objdump failed"
-
-            echo "=== Required GLIBC versions ==="
-            objdump -T "$LIBPYTHON" 2>/dev/null | grep -oP 'GLIBC_\d+\.\d+' | sort -V | uniq
-          else
-            echo "No libpython shared library found"
-          fi
-
-      - name: Test Python execution (This may fail with GLIBC error)
-        id: python-test
+          apt-get update
+          apt-get install -y curl build-essential libssl-dev libffi-dev python3-pip lsb-release
+      - name: Fix pip cache permissions
         run: |
-          echo "=== Testing Python execution ==="
+          mkdir -p /github/home/.cache/pip
+          chown -R $(whoami) /github/home/.cache
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.8
 
-          # Basic Python execution
-          python --version
-          python -c "print('Hello from Python')"
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
 
-          # Test importing standard library modules that use C extensions
-          python -c "import ssl; print(f'SSL version: {ssl. OPENSSL_VERSION}')"
-          python -c "import hashlib; print(f'Hashlib algorithms: {hashlib.algorithms_available}')"
-          python -c "import sqlite3; print(f'SQLite version:  {sqlite3.sqlite_version}')"
-          python -c "import ctypes; print('ctypes loaded successfully')"
-
-          # Test sys module for build info
-          python -c "import sys; print(f'Python build: {sys.version}')"
-
-          echo "=== All Python tests passed ==="
-
-      - name: Capture failure details (runs on failure)
-        if: failure()
+      - name: Verify Python Version
         run: |
-          echo "=== FAILURE DETECTED ==="
-          echo "Run ID:  ${{ matrix.run_id }}"
-          echo "Python version: 3.10"
-          echo "Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "Runner: $RUNNER_NAME"
-
-          echo "=== System GLIBC ==="
-          ldd --version
-
-          echo "=== Python binary info ==="
-          PYTHON_PATH="${{ steps.setup-python.outputs. python-path }}"
-          ldd "$PYTHON_PATH" 2>&1 || echo "ldd failed"
-
-          echo "=== Checking for version mismatches ==="
-          ldd "$PYTHON_PATH" 2>&1 | grep -i "not found" || echo "No missing libraries detected by ldd"
-
-  # Summary job
-  summary: 
-    name: Test Summary
-    runs-on: ubuntu-22.04
-    needs: [check-glibc, reproduce-issue]
-    if: always()
-    steps: 
-      - name: Generate summary
-        run:  |
-          echo "## GLIBC Issue Reproduction Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Python Version**:  3.10" >> $GITHUB_STEP_SUMMARY
-          echo "- **GLIBC Version**: ${{ needs.check-glibc.outputs.glibc_version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Test Result**: ${{ needs.reproduce-issue. result }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          if [ "${{ needs.reproduce-issue.result }}" == "failure" ]; then
-            echo "⚠️ **GLIBC issue may have been reproduced! **" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Check the failed jobs for GLIBC version mismatch errors." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ All tests passed.  The intermittent issue was not reproduced in this run." >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Since this is an intermittent issue, you may need to:" >> $GITHUB_STEP_SUMMARY
-            echo "1. Run this workflow multiple times" >> $GITHUB_STEP_SUMMARY
-            echo "2. Run on actual self-hosted runners with cached Python versions" >> $GITHUB_STEP_SUMMARY
-            echo "3. Test with Python versions built against newer GLIBC" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "Python: $(python --version)"
+          echo "OS:"
+          cat /etc/os-release
