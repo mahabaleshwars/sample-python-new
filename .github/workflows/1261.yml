@@ -33,12 +33,42 @@ jobs:
             $SUDO apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
           fi
 
-      - name: Start Docker daemon
+      - name: Start Docker daemon (with fallback and logs)
         env:
           SUDO: ${{ env.SUDO }}
         run: |
-          $SUDO systemctl start docker || $SUDO service docker start || $SUDO dockerd > /tmp/dockerd.log 2>&1 &
-          timeout 30 sh -c 'until docker info >/dev/null 2>&1; do sleep 1; done'
+          set -euo pipefail
+
+          start_docker() {
+            if command -v systemctl >/dev/null 2>&1; then
+              $SUDO systemctl start docker || true
+            fi
+            $SUDO service docker start || true
+
+            if ! docker info >/dev/null 2>&1; then
+              echo "Starting dockerd manually..."
+              $SUDO nohup dockerd --host=unix:///var/run/docker.sock > /tmp/dockerd.log 2>&1 &
+            fi
+          }
+
+          start_docker
+
+          for i in {1..60}; do
+            if docker info >/dev/null 2>&1; then
+              echo "Docker is up"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "Docker failed to start; dumping logs"
+          if command -v journalctl >/dev/null 2>&1; then
+            $SUDO journalctl -u docker --no-pager -n 200 || true
+          fi
+          if [ -f /tmp/dockerd.log ]; then
+            tail -n 200 /tmp/dockerd.log || true
+          fi
+          exit 1
 
       - name: Show Docker info
         run: docker info
