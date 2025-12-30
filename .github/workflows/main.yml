@@ -1,0 +1,14 @@
+name: LD Library test on self-hosted runner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  Test:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          sudo python --version
