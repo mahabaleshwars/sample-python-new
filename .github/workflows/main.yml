@@ -12,3 +12,5 @@ jobs:
           python-version: '3.12'
       - run: |
           python --version
+      - name: Check GLIBC version
+        run: ldd --version
