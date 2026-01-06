@@ -1,0 +1,39 @@
+name: Test hashFiles Basic Functionality
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-basic-hash:
+    runs-on: ubuntu-latest
+    steps: 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup python
+        uses: mahabaleshwars/setup-python@test/toolkit-pr
+        with:
+          python-version: '3.14'
+
+      - name: Install dependencies
+        working-directory: packages/glob
+        run: npm ci
+
+      - name: Run existing tests
+        working-directory: packages/glob
+        run: npm test
+
+      - name: Basic hashFiles test
+        id: basic-hash
+        run: |
+          echo "Testing basic hashFiles functionality"
+          echo "test content" > test-file.txt
+          echo "hash=${{ hashFiles('test-file.txt') }}" >> $GITHUB_OUTPUT
+
+      - name:  Verify hash output
+        run: |
+          echo "Generated hash: ${{ steps.basic-hash. outputs.hash }}"
+          if [ -z "${{ steps.basic-hash.outputs. hash }}" ]; then
+            echo "ERROR: Hash is empty"
+            exit 1
+          fi
