@@ -6,7 +6,7 @@ runs:
     - name: Checkout code
       uses: actions/checkout@v4  
     - name: Set up python
-      uses: mahabaleshwars/setup-python@test/toolkit-pr
+      uses: aparnajyothi-y/setup-python@fix-overwriting
       with:
         python-version:  '3.11'
         cache: pip
