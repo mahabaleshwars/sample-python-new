@@ -1,38 +1,42 @@
 name: 'Composite Action Example'
-description: 'A composite action to checkout code and set up Node.js'
-runs:
-  using:  'composite'
-  steps: 
-    - name:  Checkout code
+description: 'A composite action to checkout code and set up Python'
+runs: 
+  using: 'composite'
+  steps:
+    - name: Checkout code
       uses: actions/checkout@v4  
     
     - name: Set up python
       uses: mahabaleshwars/setup-python@test/toolkit-pr
-      with:
-        python-version: '3.11'
-        cache:  pip
-        cache-dependency-path:  requirements.txt
-        # Test the new hashFiles extended options: 
-        # roots - specify allowed root directories for hashing
-        # allowFilesOutsideWorkspace - opt-in to hash files outside roots
-        # exclude - glob patterns to exclude from hashing
-        hash-files-options:  |
-          roots:
-            - ${{ github.workspace }}
-            - ${{ github.action_path }}
-          allowFilesOutsideWorkspace: true
-          exclude: 
-            - '**/node_modules/**'
-            - '**/__pycache__/**'
-            - '**/*. pyc'
+      with: 
+        python-version:  '3.11'
+        cache: pip
+        cache-dependency-path: requirements. txt
     
     - name:  pip install
-      run: pip install -r requirements. txt
+      run:  |
+        if [ -f requirements. txt ]; then
+          pip install -r requirements.txt
+        else
+          echo "No requirements.txt found, skipping pip install"
+        fi
       shell: bash
     
-    - name: Test hashFiles with extended options
-      run:  |
-        echo "Testing hashFiles extended options feature"
-        echo "Workspace: ${{ github. workspace }}"
-        echo "Action Path: ${{ github. action_path }}"
+    - name:  Test hashFiles via Node.js
+      run: |
+        # Install the toolkit from the PR branch to test extended options
+        npm install @actions/glob@https://github.com/priyagupta108/toolkit.git#hashFiles-extended-options
+        
+        node -e "
+        const { hashFiles } = require('@actions/glob');
+        
+        (async () => {
+          const hash = await hashFiles('**/*.py', process.env.GITHUB_WORKSPACE, {
+            roots: [process.env. GITHUB_WORKSPACE],
+            allowFilesOutsideWorkspace: false,
+            exclude:  ['**/__pycache__/**', '**/*. pyc']
+          });
+          console. log('Python files hash:', hash || 'No matching files');
+        })();
+        "
       shell: bash
