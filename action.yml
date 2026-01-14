@@ -4,7 +4,7 @@ runs:
   using:  'composite'
   steps:
     - name: Set up Python with cache from action directory
-      uses: actions/setup-python@v5
+      uses: mahabaleshwars/setup-python@test/toolkit-pr
       with: 
         python-version:  '3.11'
         cache:  'pip'
