@@ -1,0 +1,14 @@
+name: Reproduce python-versions#384
+
+on:
+  workflow_dispatch:
+
+jobs:
+  reproduce:
+    runs-on: self-hosted  # Must be a macOS self-hosted runner
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'  # Must be a version not pre-installed; triggers download + setup.sh
