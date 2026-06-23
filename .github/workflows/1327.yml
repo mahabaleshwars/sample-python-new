@@ -17,7 +17,7 @@ jobs:
       - name: Checkout PR #1327 branch
         uses: actions/checkout@v6
       - name: Setup Python (action under test)
-        uses: actions/setup-python@v6
+        uses: gowridurgad/setup-python@removes-pipinstall
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -39,7 +39,7 @@ jobs:
       - name: Checkout PR #1327 branch
         uses: actions/checkout@v6
       - name: Setup Python (action under test)
-        uses: actions/setup-python@v6
+        uses: gowridurgad/setup-python@removes-pipinstall
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -61,7 +61,7 @@ jobs:
       - name: Checkout PR #1327 branch
         uses: actions/checkout@v6
       - name: Setup Python with (now-removed) pip-install input
-        uses: actions/setup-python@v6
+        uses: gowridurgad/setup-python@removes-pipinstall
         with:
           python-version: '3.13'
           # This input no longer exists after PR #1327 — it should be ignored.
