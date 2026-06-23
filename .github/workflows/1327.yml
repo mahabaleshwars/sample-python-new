@@ -1,0 +1,86 @@
+name: Test pip-install input removal (PR #1327)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  # 1. Baseline — setup-python still works without pip-install
+  setup-works-without-pip-install:
+    name: Setup works (no pip-install) - py${{ matrix.python-version }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.9', '3.11', '3.13']
+    steps:
+      - name: Checkout PR #1327 branch
+        uses: actions/checkout@v4
+        with:
+          repository: gowridurgad/setup-python
+          ref: removes-pipinstall
+      - name: Setup Python (action under test)
+        uses: ./
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      - name: Verify Python is available
+        run: |
+          python --version
+          python -c "import sys; print(sys.executable)"
+
+  # 2. Recommended replacement — install deps via a separate step
+  install-deps-recommended-way:
+    name: Install deps via separate step - py${{ matrix.python-version }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout PR #1327 branch
+        uses: actions/checkout@v4
+        with:
+          repository: gowridurgad/setup-python
+          ref: removes-pipinstall
+      - name: Setup Python (action under test)
+        uses: ./
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      - name: Install dependencies (recommended replacement for pip-install)
+        run: python -m pip install numpy pandas requests
+      - name: Verify packages installed
+        run: |
+          python -c "import numpy, pandas, requests; print('numpy', numpy.__version__); print('pandas', pandas.__version__); print('requests', requests.__version__)"
+
+  # 3. Regression — using the removed pip-install input must NOT install anything
+  removed-input-is-noop:
+    name: Removed pip-install input is a no-op - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout PR #1327 branch
+        uses: actions/checkout@v4
+        with:
+          repository: gowridurgad/setup-python
+          ref: removes-pipinstall
+      - name: Setup Python with (now-removed) pip-install input
+        uses: ./
+        with:
+          python-version: '3.13'
+          # This input no longer exists after PR #1327 — it should be ignored.
+          pip-install: numpy pandas requests
+      - name: Assert the package was NOT auto-installed
+        shell: bash
+        run: |
+          if python -c "import numpy" 2>/dev/null; then
+            echo "::error::numpy was installed — pip-install input still appears to be active!"
+            exit 1
+          else
+            echo "✅ Confirmed: pip-install input is a no-op; numpy is not installed."
+          fi
