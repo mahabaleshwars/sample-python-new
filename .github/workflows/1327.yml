@@ -17,7 +17,7 @@ jobs:
       - name: Checkout PR #1327 branch
         uses: actions/checkout@v4
       - name: Setup Python (action under test)
-        uses: gowridurgad/setup-python@removes-pipinstall
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -39,7 +39,7 @@ jobs:
       - name: Checkout PR #1327 branch
         uses: actions/checkout@v4
       - name: Setup Python (action under test)
-        uses: gowridurgad/setup-python@removes-pipinstall
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
