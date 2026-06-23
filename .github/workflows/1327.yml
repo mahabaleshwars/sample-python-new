@@ -15,9 +15,9 @@ jobs:
         python-version: ['3.9', '3.11', '3.13']
     steps:
       - name: Checkout PR #1327 branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Python (action under test)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -37,9 +37,9 @@ jobs:
         python-version: ['3.11', '3.13']
     steps:
       - name: Checkout PR #1327 branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Python (action under test)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -59,9 +59,9 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     steps:
       - name: Checkout PR #1327 branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Python with (now-removed) pip-install input
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
           # This input no longer exists after PR #1327 — it should be ignored.
