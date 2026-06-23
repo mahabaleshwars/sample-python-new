@@ -61,7 +61,7 @@ jobs:
       - name: Checkout PR #1327 branch
         uses: actions/checkout@v4
       - name: Setup Python with (now-removed) pip-install input
-        uses: gowridurgad/setup-python@removes-pipinstall
+        uses: actions/setup-python@v5
         with:
           python-version: '3.13'
           # This input no longer exists after PR #1327 — it should be ignored.
